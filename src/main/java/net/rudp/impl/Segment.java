@@ -1,37 +1,6 @@
-/*
- * Simple Reliable UDP (rudp)
- * Copyright (c) 2009, Adrian Granados (agranados@ihmc.us)
- * All rights reserved.
- *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions are met:
- *     * Redistributions of source code must retain the above copyright
- *       notice, this list of conditions and the following disclaimer.
- *     * Redistributions in binary form must reproduce the above copyright
- *       notice, this list of conditions and the following disclaimer in the
- *       documentation and/or other materials provided with the distribution.
- *     * Neither the name of the copyright holder nor the names of its
- *       contributors may be used to endorse or promote products derived
- *       from this software without specific prior written permission.
- *
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
- * "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
- * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
- * A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
- * HOLDERS AND CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
- * SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
- * PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS;
- * OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
- * WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
- * OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
- * ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- *
- */
+package net.udp.impl;
 
-package net.rudp.impl;
-
-public abstract class Segment
-{
+public abstract class Segment {
     public static final int RUDP_VERSION = 1;
     public static final int RUDP_HEADER_LEN = 6;
 
@@ -44,37 +13,31 @@ public abstract class Segment
     public static final byte FIN_FLAG = (byte) 0x02;
 
 
-    protected Segment()
-    {
+    protected Segment() {
         _nretx = 0;
         _ackn = -1;
     }
 
     public abstract String type();
 
-    public int flags()
-    {
+    public int flags() {
         return _flags;
     }
 
-    public int seq()
-    {
+    public int seq() {
         return _seqn;
     }
 
-    public int length()
-    {
+    public int length() {
         return _hlen;
     }
 
-    public void setAck(int ackn)
-    {
+    public void setAck(int ackn) {
         _flags = _flags | ACK_FLAG;
         _ackn = ackn;
     }
 
-    public int getAck()
-    {
+    public int getAck() {
         if ((_flags & ACK_FLAG) == ACK_FLAG) {
             return _ackn;
         }
@@ -82,18 +45,15 @@ public abstract class Segment
         return -1;
     }
 
-    public int getRetxCounter()
-    {
+    public int getRetxCounter() {
         return _nretx;
     }
 
-    public void setRetxCounter(int n)
-    {
+    public void setRetxCounter(int n) {
         _nretx = n;
     }
 
-    public byte[] getBytes()
-    {
+    public byte[] getBytes() {
         byte[] buffer = new byte[length()];
 
         buffer[0] = (byte) (_flags & 0xFF);
@@ -104,8 +64,8 @@ public abstract class Segment
         return buffer;
     }
 
-    public String toString()
-    {
+    @Override
+    public String toString() {
         return type() +
         " [" +
         " SEQ = " + seq() +
@@ -114,13 +74,11 @@ public abstract class Segment
         " ]";
     }
 
-    public static Segment parse(byte[] bytes)
-    {
+    public static Segment parse(byte[] bytes) {
         return Segment.parse(bytes, 0, bytes.length);
     }
 
-    public static Segment parse(byte[] bytes, int off, int len)
-    {
+    public static Segment parse(byte[] bytes, int off, int len) {
         Segment segment = null;
 
         if (len < RUDP_HEADER_LEN) {
@@ -175,15 +133,13 @@ public abstract class Segment
      *  +---------------+---------------+
      *
      */
-    protected void init(int flags, int seqn, int len)
-    {
+    protected void init(int flags, int seqn, int len) {
         _flags = flags;
         _seqn = seqn;
         _hlen = len;
     }
 
-    protected void parseBytes(byte[] buffer, int off, int len)
-    {
+    protected void parseBytes(byte[] buffer, int off, int len) {
         _flags = (buffer[off] & 0xFF);
         _hlen  = (buffer[off+1] & 0xFF);
         _seqn  = (buffer[off+2] & 0xFF);

@@ -1,34 +1,4 @@
-/*
- * Simple Reliable UDP (rudp)
- * Copyright (c) 2009, Adrian Granados (agranados@ihmc.us)
- * All rights reserved.
- *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions are met:
- *     * Redistributions of source code must retain the above copyright
- *       notice, this list of conditions and the following disclaimer.
- *     * Redistributions in binary form must reproduce the above copyright
- *       notice, this list of conditions and the following disclaimer in the
- *       documentation and/or other materials provided with the distribution.
- *     * Neither the name of the copyright holder nor the names of its
- *       contributors may be used to endorse or promote products derived
- *       from this software without specific prior written permission.
- *
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
- * "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
- * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
- * A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
- * HOLDERS AND CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
- * SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
- * PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS;
- * OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
- * WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
- * OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
- * ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- *
- */
-
-package net.rudp.impl;
+package net.udp.impl;
 
 
 
@@ -64,16 +34,13 @@ package net.rudp.impl;
  *  +---------------+---------------+
  *
  */
-public class SYNSegment extends Segment
-{
-    protected SYNSegment()
-    {
+public class SYNSegment extends Segment {
+    protected SYNSegment() {
     }
 
     public SYNSegment(int seqn, int maxseg, int maxsegsize, int rettoval,
             int cumacktoval, int niltoval, int maxret,
-            int maxcumack, int maxoutseq, int maxautorst)
-    {
+            int maxcumack, int maxoutseq, int maxautorst) {
         init(SYN_FLAG, seqn, SYN_HEADER_LEN);
 
         _version = RUDP_VERSION;
@@ -89,81 +56,70 @@ public class SYNSegment extends Segment
         _maxautorst = maxautorst;
     }
 
-    public String type()
-    {
+    @Override
+    public String type() {
         return "SYN";
     }
 
-    public int getVersion()
-    {
+    public int getVersion() {
         return _version;
     }
 
-    public int getMaxOutstandingSegments()
-    {
+    public int getMaxOutstandingSegments() {
         return _maxseg;
     }
 
-    public int getOptionFlags()
-    {
+    public int getOptionFlags() {
         return _optflags;
     }
 
-    public int getMaxSegmentSize()
-    {
+    public int getMaxSegmentSize() {
         return _maxsegsize;
     }
 
-    public int getRetransmissionTimeout()
-    {
+    public int getRetransmissionTimeout() {
         return _rettoval;
     }
 
-    public int getCummulativeAckTimeout()
-    {
+    public int getCummulativeAckTimeout() {
         return _cumacktoval;
     }
 
-    public int getNulSegmentTimeout()
-    {
+    public int getNulSegmentTimeout() {
         return _niltoval;
     }
 
-    public int getMaxRetransmissions()
-    {
+    public int getMaxRetransmissions() {
         return _maxret;
     }
 
-    public int getMaxCumulativeAcks()
-    {
+    public int getMaxCumulativeAcks() {
         return _maxcumack;
     }
 
-    public int getMaxOutOfSequence()
-    {
+    public int getMaxOutOfSequence() {
         return _maxoutseq;
     }
 
-    public int getMaxAutoReset()
-    {
+    public int getMaxAutoReset() {
         return _maxautorst;
     }
 
-    public byte[] getBytes()
-    {
+    @Override
+    public byte[] getBytes() {
         byte[] buffer = super.getBytes();
         buffer[4] = (byte) ((_version << 4) & 0xFF);
         buffer[5] = (byte) (_maxseg & 0xFF);
         buffer[6] = (byte) (_optflags & 0xFF);
         buffer[7] = 0; /* spare */
         buffer[8] = (byte) ((_maxsegsize >>> 8) & 0xFF);
-        buffer[9] = (byte) ((_maxsegsize >>> 0) & 0xFF);
+        buffer[9] = (byte) ((_maxsegsize) & 0xFF);
         buffer[10] = (byte) ((_rettoval >>> 8) & 0xFF);
-        buffer[11] = (byte) ((_rettoval >>> 0) & 0xFF);
+        buffer[11] = (byte) ((_rettoval) & 0xFF);
         buffer[12] = (byte) ((_cumacktoval >>> 8) & 0xFF);
-        buffer[13] = (byte) ((_cumacktoval >>> 0) & 0xFF);
+        buffer[13] = (byte) ((_cumacktoval) & 0xFF);
         buffer[14] = (byte) ((_niltoval >>> 8) & 0xFF);
-        buffer[15] = (byte) ((_niltoval >>> 0) & 0xFF);
+        buffer[15] = (byte) ((_niltoval) & 0xFF);
         buffer[16] = (byte) (_maxret & 0xFF);
         buffer[17] = (byte) (_maxcumack & 0xFF);
         buffer[18] = (byte) (_maxoutseq & 0xFF);
@@ -172,8 +128,8 @@ public class SYNSegment extends Segment
         return buffer;
     }
 
-    protected void parseBytes(byte[] buffer, int off, int len)
-    {
+    @Override
+    protected void parseBytes(byte[] buffer, int off, int len) {
         super.parseBytes(buffer, off, len);
 
         if (len < (SYN_HEADER_LEN)) {
@@ -188,10 +144,10 @@ public class SYNSegment extends Segment
         _maxseg      =  (buffer[off+ 5] & 0xFF);
         _optflags    =  (buffer[off+ 6] & 0xFF);
         // spare     =  (buffer[off+ 7] & 0xFF);
-        _maxsegsize  = ((buffer[off+ 8] & 0xFF) << 8) | ((buffer[off+ 9] & 0xFF) << 0);
-        _rettoval    = ((buffer[off+10] & 0xFF) << 8) | ((buffer[off+11] & 0xFF) << 0);
-        _cumacktoval = ((buffer[off+12] & 0xFF) << 8) | ((buffer[off+13] & 0xFF) << 0);
-        _niltoval    = ((buffer[off+14] & 0xFF) << 8) | ((buffer[off+15] & 0xFF) << 0);
+        _maxsegsize  = ((buffer[off+ 8] & 0xFF) << 8) | ((buffer[off + 9] & 0xFF));
+        _rettoval    = ((buffer[off+10] & 0xFF) << 8) | ((buffer[off + 11] & 0xFF));
+        _cumacktoval = ((buffer[off+12] & 0xFF) << 8) | ((buffer[off + 13] & 0xFF));
+        _niltoval    = ((buffer[off+14] & 0xFF) << 8) | ((buffer[off + 15] & 0xFF));
         _maxret      =  (buffer[off+16] & 0xFF);
         _maxcumack   =  (buffer[off+17] & 0xFF);
         _maxoutseq   =  (buffer[off+18] & 0xFF);

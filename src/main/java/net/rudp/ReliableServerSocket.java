@@ -1,50 +1,12 @@
-/*
- * Simple Reliable UDP (rudp)
- * Copyright (c) 2009, Adrian Granados (agranados@ihmc.us)
- * All rights reserved.
- *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions are met:
- *     * Redistributions of source code must retain the above copyright
- *       notice, this list of conditions and the following disclaimer.
- *     * Redistributions in binary form must reproduce the above copyright
- *       notice, this list of conditions and the following disclaimer in the
- *       documentation and/or other materials provided with the distribution.
- *     * Neither the name of the copyright holder nor the names of its
- *       contributors may be used to endorse or promote products derived
- *       from this software without specific prior written permission.
- *
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
- * "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
- * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
- * A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
- * HOLDERS AND CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
- * SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
- * PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS;
- * OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
- * WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
- * OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
- * ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- *
- */
+package net.udp;
 
-package net.rudp;
+import net.udp.impl.SYNSegment;
+import net.udp.impl.Segment;
 
 import java.io.IOException;
-import java.net.DatagramPacket;
-import java.net.DatagramSocket;
-import java.net.InetAddress;
-import java.net.InetSocketAddress;
-import java.net.ServerSocket;
-import java.net.Socket;
-import java.net.SocketAddress;
-import java.net.SocketException;
-import java.net.SocketTimeoutException;
+import java.net.*;
 import java.util.ArrayList;
 import java.util.HashMap;
-
-import net.rudp.impl.SYNSegment;
-import net.rudp.impl.Segment;
 
 /**
  * This class implements server sockets that use
@@ -53,8 +15,7 @@ import net.rudp.impl.Segment;
  * @author Adrian Granados
  * @see java.net.ServerSocket
  */
-public class ReliableServerSocket extends ServerSocket
-{
+public class ReliableServerSocket extends ServerSocket {
     /**
      * Creates an unbound RUDP server socket.
      *
@@ -62,9 +23,7 @@ public class ReliableServerSocket extends ServerSocket
      *         the underlying UDP socket.
      * @see java.net.ServerSocket#ServerSocket()
      */
-    public ReliableServerSocket()
-        throws IOException
-    {
+    public ReliableServerSocket() throws IOException {
         this(0, 0, null);
     }
 
@@ -81,9 +40,7 @@ public class ReliableServerSocket extends ServerSocket
      *         the underlying UDP socket.
      * @see java.net.ServerSocket#ServerSocket(int)
      */
-    public ReliableServerSocket(int port)
-        throws IOException
-    {
+    public ReliableServerSocket(int port) throws IOException {
         this(port, 0, null);
     }
 
@@ -98,9 +55,7 @@ public class ReliableServerSocket extends ServerSocket
      *         the underlying UDP socket.
      * @see java.net.ServerSocket#ServerSocket(int, int)
      */
-    public ReliableServerSocket(int port, int backlog)
-        throws IOException
-    {
+    public ReliableServerSocket(int port, int backlog) throws IOException {
         this(port, backlog, null);
     }
 
@@ -120,9 +75,7 @@ public class ReliableServerSocket extends ServerSocket
      *         the underlying UDP socket.
      * @see java.net.ServerSocket#ServerSocket(int, int, InetAddress)
      */
-    public ReliableServerSocket(int port, int backlog, InetAddress bindAddr)
-        throws IOException
-    {
+    public ReliableServerSocket(int port, int backlog, InetAddress bindAddr) throws IOException {
         this(new DatagramSocket(new InetSocketAddress(bindAddr, port)), backlog);
     }
 
@@ -134,17 +87,15 @@ public class ReliableServerSocket extends ServerSocket
      * @param backlog the listen backlog.
      * @throws IOException if an I/O error occurs.
      */
-    public ReliableServerSocket(DatagramSocket sock, int backlog)
-        throws IOException
-    {
+    public ReliableServerSocket(DatagramSocket sock, int backlog) throws IOException {
         if (sock == null) {
             throw new NullPointerException("sock");
         }
 
         _serverSock = sock;
-        _backlogSize = (backlog <= 0) ? DEFAULT_BACKLOG_SIZE : backlog;
-        _backlog = new ArrayList<ReliableSocket>(_backlogSize);
-        _clientSockTable = new HashMap<SocketAddress, ReliableClientSocket>();
+        int _backlogSize = (backlog <= 0) ? DEFAULT_BACKLOG_SIZE : backlog;
+        _backlog = new ArrayList<>(_backlogSize);
+        _clientSockTable = new HashMap<>();
         _stateListener = new StateListener();
         _timeout = 0;
         _closed = false;
@@ -152,9 +103,8 @@ public class ReliableServerSocket extends ServerSocket
         new ReceiverThread().start();
     }
 
-    public Socket accept()
-        throws IOException
-    {
+    @Override
+    public Socket accept() throws IOException {
         if (isClosed()) {
             throw new SocketException("Socket is closed");
         }
@@ -183,19 +133,17 @@ public class ReliableServerSocket extends ServerSocket
                 }
             }
 
-            return (Socket) _backlog.remove(0);
+            return _backlog.remove(0);
         }
     }
 
-    public synchronized void bind(SocketAddress endpoint)
-        throws IOException
-    {
+    @Override
+    public synchronized void bind(SocketAddress endpoint) throws IOException {
         bind(endpoint, 0);
     }
 
-    public synchronized void bind(SocketAddress endpoint, int backlog)
-        throws IOException
-    {
+    @Override
+    public synchronized void bind(SocketAddress endpoint, int backlog) throws IOException {
         if (isClosed()) {
             throw new SocketException("Socket is closed");
         }
@@ -203,8 +151,8 @@ public class ReliableServerSocket extends ServerSocket
         _serverSock.bind(endpoint);
     }
 
-    public synchronized void close()
-    {
+    @Override
+    public synchronized void close() {
         if (isClosed()) {
             return;
         }
@@ -220,33 +168,33 @@ public class ReliableServerSocket extends ServerSocket
         }
     }
 
-    public InetAddress getInetAddress()
-    {
+    @Override
+    public InetAddress getInetAddress() {
         return _serverSock.getInetAddress();
     }
 
-    public int getLocalPort()
-    {
+    @Override
+    public int getLocalPort() {
         return _serverSock.getLocalPort();
     }
 
-    public SocketAddress getLocalSocketAddress()
-    {
+    @Override
+    public SocketAddress getLocalSocketAddress() {
         return _serverSock.getLocalSocketAddress();
     }
 
-    public boolean isBound()
-    {
+    @Override
+    public boolean isBound() {
         return _serverSock.isBound();
     }
 
-    public boolean isClosed()
-    {
+    @Override
+    public boolean isClosed() {
         return _closed;
     }
 
-    public void setSoTimeout(int timeout)
-    {
+    @Override
+    public void setSoTimeout(int timeout) {
         if (timeout < 0) {
             throw new IllegalArgumentException("timeout < 0");
         }
@@ -254,8 +202,8 @@ public class ReliableServerSocket extends ServerSocket
         _timeout = timeout;
     }
 
-    public int getSoTimeout()
-    {
+    @Override
+    public int getSoTimeout() {
         return _timeout;
     }
 
@@ -265,10 +213,9 @@ public class ReliableServerSocket extends ServerSocket
      * @param endpoint    the new socket.
      * @return the registered socket.
      */
-    private ReliableClientSocket addClientSocket(SocketAddress endpoint)
-    {
+    private ReliableClientSocket addClientSocket(SocketAddress endpoint) {
         synchronized (_clientSockTable) {
-            ReliableClientSocket sock = (ReliableClientSocket) _clientSockTable.get(endpoint);
+            ReliableClientSocket sock = _clientSockTable.get(endpoint);
 
             if (sock == null) {
                 try {
@@ -291,10 +238,9 @@ public class ReliableServerSocket extends ServerSocket
      * @param endpoint     the socket.
      * @return the deregistered socket.
      */
-    private ReliableClientSocket removeClientSocket(SocketAddress endpoint)
-    {
+    private ReliableClientSocket removeClientSocket(SocketAddress endpoint) {
         synchronized (_clientSockTable) {
-            ReliableClientSocket sock = (ReliableClientSocket) _clientSockTable.remove(endpoint);
+            ReliableClientSocket sock = _clientSockTable.remove(endpoint);
 
             if (_clientSockTable.isEmpty()) {
                 if (isClosed()) {
@@ -306,33 +252,32 @@ public class ReliableServerSocket extends ServerSocket
         }
     }
 
-    private DatagramSocket _serverSock;
+    private final DatagramSocket _serverSock;
     private int            _timeout;
-    private int            _backlogSize;
     private boolean        _closed;
 
     /*
      * The listen backlog queue.
      */
-    private ArrayList<ReliableSocket>      _backlog;
+    private final ArrayList<net.udp.ReliableSocket>      _backlog;
 
     /*
      * A table of active opened client sockets.
      */
-    private HashMap<SocketAddress, ReliableClientSocket>   _clientSockTable;
+    private final HashMap<SocketAddress, ReliableClientSocket>   _clientSockTable;
 
-    private ReliableSocketStateListener _stateListener;
+    private final net.udp.ReliableSocketStateListener _stateListener;
 
     private static final int DEFAULT_BACKLOG_SIZE = 50;
 
-    private class ReceiverThread extends Thread
-    {
+    private class ReceiverThread extends Thread {
         public ReceiverThread()
         {
             super("ReliableServerSocket");
             setDaemon(true);
         }
 
+        @Override
         public void run()
         {
             byte[] buffer = new byte[65535];
@@ -356,7 +301,7 @@ public class ReliableServerSocket extends ServerSocket
                             }
                         }
 
-                        sock = (ReliableClientSocket) _clientSockTable.get(endpoint);
+                        sock = _clientSockTable.get(endpoint);
                     }
 
                     if (sock != null) {
@@ -367,14 +312,12 @@ public class ReliableServerSocket extends ServerSocket
                     if (isClosed()) {
                         break;
                     }
-                    xcp.printStackTrace();
                 }
             }
         }
     }
 
-    public class ReliableClientSocket extends ReliableSocket
-    {
+    public static class ReliableClientSocket extends net.udp.ReliableSocket {
         public ReliableClientSocket(DatagramSocket sock,
                                     SocketAddress endpoint)
             throws IOException
@@ -383,12 +326,14 @@ public class ReliableServerSocket extends ServerSocket
             _endpoint = endpoint;
         }
 
-        protected void init(DatagramSocket sock, ReliableSocketProfile profile)
+        @Override
+        protected void init(DatagramSocket sock, net.udp.ReliableSocketProfile profile)
         {
-            _queue = new ArrayList<Segment>();
+            _queue = new ArrayList<>();
             super.init(sock, profile);
         }
 
+        @Override
         protected Segment receiveSegmentImpl()
         {
             synchronized (_queue) {
@@ -401,7 +346,7 @@ public class ReliableServerSocket extends ServerSocket
                     }
                 }
 
-                return (Segment) _queue.remove(0);
+                return _queue.remove(0);
             }
         }
 
@@ -413,6 +358,7 @@ public class ReliableServerSocket extends ServerSocket
             }
         }
 
+        @Override
         protected void closeSocket()
         {
             synchronized (_queue) {
@@ -422,6 +368,7 @@ public class ReliableServerSocket extends ServerSocket
             }
         }
 
+        @Override
         protected void log(String msg)
         {
             System.out.println(getPort() + ": " + msg);
@@ -430,9 +377,9 @@ public class ReliableServerSocket extends ServerSocket
         private ArrayList<Segment> _queue;
     }
 
-    private class StateListener implements ReliableSocketStateListener
-    {
-        public void connectionOpened(ReliableSocket sock)
+    private class StateListener implements net.udp.ReliableSocketStateListener {
+        @Override
+        public void connectionOpened(net.udp.ReliableSocket sock)
         {
             if (sock instanceof ReliableClientSocket) {
                 synchronized (_backlog) {
@@ -451,12 +398,14 @@ public class ReliableServerSocket extends ServerSocket
             }
         }
 
-        public void connectionRefused(ReliableSocket sock)
+        @Override
+        public void connectionRefused(net.udp.ReliableSocket sock)
         {
             // do nothing.
         }
 
-        public void connectionClosed(ReliableSocket sock)
+        @Override
+        public void connectionClosed(net.udp.ReliableSocket sock)
         {
             // Remove client socket from the table of active connections.
             if (sock instanceof ReliableClientSocket) {
@@ -464,7 +413,8 @@ public class ReliableServerSocket extends ServerSocket
             }
         }
 
-        public void connectionFailure(ReliableSocket sock)
+        @Override
+        public void connectionFailure(net.udp.ReliableSocket sock)
         {
             // Remove client socket from the table of active connections.
             if (sock instanceof ReliableClientSocket) {
@@ -472,7 +422,8 @@ public class ReliableServerSocket extends ServerSocket
             }
         }
 
-        public void connectionReset(ReliableSocket sock)
+        @Override
+        public void connectionReset(net.udp.ReliableSocket sock)
         {
             // do nothing.
         }

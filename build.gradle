@@ -1,0 +1,13 @@
+apply plugin: "java"
+
+version '1.0'
+
+sourceCompatibility = 1.8
+targetCompatibility= 1.8
+
+jar{
+	version = null
+	from{
+		configurations.runtimeClasspath.collect{it.isDirectory() ? it : zipTree(it)}
+	}
+}

@@ -1,44 +1,13 @@
-/*
- * Simple Reliable UDP (rudp)
- * Copyright (c) 2009, Adrian Granados (agranados@ihmc.us)
- * All rights reserved.
- *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions are met:
- *     * Redistributions of source code must retain the above copyright
- *       notice, this list of conditions and the following disclaimer.
- *     * Redistributions in binary form must reproduce the above copyright
- *       notice, this list of conditions and the following disclaimer in the
- *       documentation and/or other materials provided with the distribution.
- *     * Neither the name of the copyright holder nor the names of its
- *       contributors may be used to endorse or promote products derived
- *       from this software without specific prior written permission.
- *
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
- * "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
- * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
- * A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
- * HOLDERS AND CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
- * SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
- * PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS;
- * OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
- * WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
- * OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
- * ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- *
- */
-
-package net.rudp;
+package net.udp;
 
 
 /**
  * This class specifies the RUDP parameters of a socket.
  *
  * @author Adrian Granados
- * @see    net.rudp.ReliableSocket
+ * @see    net.udp.ReliableSocket
  */
-public class ReliableSocketProfile
-{
+public class ReliableSocketProfile {
     public final static int MAX_SEND_QUEUE_SIZE    = 32;
     public final static int MAX_RECV_QUEUE_SIZE    = 32;
 
@@ -62,8 +31,7 @@ public class ReliableSocketProfile
      * unacknowledged. We will use 0 instead, which means unlimited.
      *
      */
-    public ReliableSocketProfile()
-    {
+    public ReliableSocketProfile() {
         this(MAX_SEND_QUEUE_SIZE,
              MAX_RECV_QUEUE_SIZE,
              MAX_SEGMENT_SIZE,
@@ -102,8 +70,7 @@ public class ReliableSocketProfile
                                  int maxAutoReset,
                                  int nullSegmentTimeout,
                                  int retransmissionTimeout,
-                                 int cumulativeAckTimeout)
-    {
+                                 int cumulativeAckTimeout) {
         checkValue("maxSendQueueSize",      maxSendQueueSize,      1,   255);
         checkValue("maxRecvQueueSize",      maxRecvQueueSize,      1,   255);
         checkValue("maxSegmentSize",        maxSegmentSize,        22,  65535);
@@ -132,93 +99,82 @@ public class ReliableSocketProfile
     /**
      * Returns the maximum send queue size (packets).
      */
-    public int maxSendQueueSize()
-    {
+    public int maxSendQueueSize() {
         return _maxSendQueueSize;
     }
 
     /**
      * Returns the maximum receive queue size (packets).
      */
-    public int maxRecvQueueSize()
-    {
+    public int maxRecvQueueSize() {
         return _maxRecvQueueSize;
     }
 
     /**
      * Returns the maximum segment size (octets).
      */
-    public int maxSegmentSize()
-    {
+    public int maxSegmentSize() {
         return _maxSegmentSize;
     }
 
     /**
      * Returns the maximum number of outstanding segments.
      */
-    public int maxOutstandingSegs()
-    {
+    public int maxOutstandingSegs() {
         return _maxOutstandingSegs;
     }
 
     /**
      * Returns the maximum number of consecutive retransmissions (0 means unlimited).
      */
-    public int maxRetrans()
-    {
+    public int maxRetrans() {
         return _maxRetrans;
     }
 
     /**
      * Returns the maximum number of unacknowledged received segments.
      */
-    public int maxCumulativeAcks()
-    {
+    public int maxCumulativeAcks() {
         return _maxCumulativeAcks;
     }
 
     /**
      * Returns the maximum number of out-of-sequence received segments.
      */
-    public int maxOutOfSequence()
-    {
+    public int maxOutOfSequence() {
         return _maxOutOfSequence;
     }
 
     /**
      * Returns the maximum number of consecutive auto resets.
      */
-    public int maxAutoReset()
-    {
+    public int maxAutoReset() {
         return _maxAutoReset;
     }
 
     /**
      * Returns the null segment timeout (ms).
      */
-    public int nullSegmentTimeout()
-    {
+    public int nullSegmentTimeout() {
         return _nullSegmentTimeout;
     }
 
     /**
      * Returns the retransmission timeout (ms).
      */
-    public int retransmissionTimeout()
-    {
+    public int retransmissionTimeout() {
         return _retransmissionTimeout;
     }
 
     /**
      * Returns the cumulative acknowledge timeout (ms).
      */
-    public int cumulativeAckTimeout()
-    {
+    public int cumulativeAckTimeout() {
         return _cumulativeAckTimeout;
     }
 
-    public String toString()
-    {
+    @Override
+    public String toString() {
         StringBuilder sb = new StringBuilder();
         sb.append("[");
         sb.append(_maxSendQueueSize).append(", ");
@@ -239,22 +195,21 @@ public class ReliableSocketProfile
     private void checkValue(String param,
                                  int value,
                                  int minValue,
-                                 int maxValue)
-    {
+                                 int maxValue) {
         if (value < minValue || value > maxValue) {
             throw new IllegalArgumentException(param);
         }
     }
 
-    private int _maxSendQueueSize;
-    private int _maxRecvQueueSize;
-    private int _maxSegmentSize;
-    private int _maxOutstandingSegs;
-    private int _maxRetrans;
-    private int _maxCumulativeAcks;
-    private int _maxOutOfSequence;
-    private int _maxAutoReset;
-    private int _nullSegmentTimeout;
-    private int _retransmissionTimeout;
-    private int _cumulativeAckTimeout;
+    private final int _maxSendQueueSize;
+    private final int _maxRecvQueueSize;
+    private final int _maxSegmentSize;
+    private final int _maxOutstandingSegs;
+    private final int _maxRetrans;
+    private final int _maxCumulativeAcks;
+    private final int _maxOutOfSequence;
+    private final int _maxAutoReset;
+    private final int _nullSegmentTimeout;
+    private final int _retransmissionTimeout;
+    private final int _cumulativeAckTimeout;
 }
