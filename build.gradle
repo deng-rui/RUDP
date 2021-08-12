@@ -1,13 +1,23 @@
 apply plugin: "java"
+apply plugin: "maven-publish"
 
-version '1.0'
 
 sourceCompatibility = 1.8
 targetCompatibility= 1.8
 
 jar{
-	version = null
-	from{
-		configurations.runtimeClasspath.collect{it.isDirectory() ? it : zipTree(it)}
-	}
+    from{
+        configurations.runtimeClasspath.collect{it.isDirectory() ? it : zipTree(it)}
+    }
+}
+
+publishing {
+    publications {
+        Production(MavenPublication) {
+            groupId = 'com.github.deng-rui'
+            artifactId = 'RUDP'
+            version = '1.0.0'
+            from components.java
+        }
+    }
 }
