@@ -15,11 +15,6 @@ public interface ReliableSocketStateListener {
     void connectionOpened(ReliableSocket sock);
 
     /**
-     * Invoked when the attempt to establish a connection is refused.
-     */
-    void connectionRefused(ReliableSocket sock);
-
-    /**
      * Invoked when the connection is closed.
      */
     void connectionClosed(ReliableSocket sock);
@@ -28,9 +23,4 @@ public interface ReliableSocketStateListener {
      * Invoked when the (established) connection fails.
      */
     void connectionFailure(ReliableSocket sock);
-
-    /**
-     * Invoked when the connection is reset.
-     */
-    void connectionReset(ReliableSocket sock);
 }

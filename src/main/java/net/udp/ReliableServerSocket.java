@@ -17,17 +17,6 @@ import java.util.HashMap;
  */
 public class ReliableServerSocket extends ServerSocket {
     /**
-     * Creates an unbound RUDP server socket.
-     *
-     * @throws IOException if an I/O error occurs when opening
-     *         the underlying UDP socket.
-     * @see java.net.ServerSocket#ServerSocket()
-     */
-    public ReliableServerSocket() throws IOException {
-        this(0, 0, null);
-    }
-
-    /**
      * Creates a RUDP server socket, bound to the specified port. A port
      * of <code>0</code> creates a socket on any free port.
      * </p>
@@ -43,22 +32,7 @@ public class ReliableServerSocket extends ServerSocket {
     public ReliableServerSocket(int port) throws IOException {
         this(port, 0, null);
     }
-
-    /**
-     * Creates a RUDP server socket and binds it to the specified local port, with
-     * the specified backlog. A port of <code>0</code> creates a socket on any
-     * free port.
-     *
-     * @param port      the port number, or <code>0</code> to use any free port.
-     * @param backlog   the listen backlog.
-     * @throws IOException if an I/O error occurs when opening
-     *         the underlying UDP socket.
-     * @see java.net.ServerSocket#ServerSocket(int, int)
-     */
-    public ReliableServerSocket(int port, int backlog) throws IOException {
-        this(port, backlog, null);
-    }
-
+    
     /**
      * Creates a RUDP server socket and binds it to the specified local port and
      * IP address, with the specified backlog. The <i>bindAddr</i> argument
@@ -92,13 +66,13 @@ public class ReliableServerSocket extends ServerSocket {
             throw new NullPointerException("sock");
         }
 
-        _serverSock = sock;
-        int _backlogSize = (backlog <= 0) ? DEFAULT_BACKLOG_SIZE : backlog;
-        _backlog = new ArrayList<>(_backlogSize);
-        _clientSockTable = new HashMap<>();
+        serverSock = sock;
+        int backlogSize = (backlog <= 0) ? DEFAULT_BACKLOG_SIZE : backlog;
+        this.backlog = new ArrayList<>(backlogSize);
+        clientSockTable = new HashMap<>();
         _stateListener = new StateListener();
-        _timeout = 0;
-        _closed = false;
+        timeout = 0;
+        closed = false;
 
         new ReceiverThread().start();
     }
@@ -109,22 +83,21 @@ public class ReliableServerSocket extends ServerSocket {
             throw new SocketException("Socket is closed");
         }
 
-        synchronized (_backlog) {
-            while (_backlog.isEmpty()) {
+        synchronized (backlog) {
+            while (backlog.isEmpty()) {
                 try {
-                    if (_timeout == 0) {
-                        _backlog.wait();
+                    if (timeout == 0) {
+                        backlog.wait();
                     }
                     else {
                         long startTime = System.currentTimeMillis();
-                        _backlog.wait(_timeout);
-                        if (System.currentTimeMillis() - startTime >= _timeout) {
+                        backlog.wait(timeout);
+                        if (System.currentTimeMillis() - startTime >= timeout) {
                             throw new SocketTimeoutException();
                         }
                     }
 
-                }
-                catch (InterruptedException xcp) {
+                } catch (InterruptedException xcp) {
                     xcp.printStackTrace();
                 }
 
@@ -133,22 +106,18 @@ public class ReliableServerSocket extends ServerSocket {
                 }
             }
 
-            return _backlog.remove(0);
+            return backlog.remove(0);
         }
     }
 
     @Override
     public synchronized void bind(SocketAddress endpoint) throws IOException {
-        bind(endpoint, 0);
+        //用不上 API保留
     }
 
     @Override
     public synchronized void bind(SocketAddress endpoint, int backlog) throws IOException {
-        if (isClosed()) {
-            throw new SocketException("Socket is closed");
-        }
-
-        _serverSock.bind(endpoint);
+        //用不上 API保留
     }
 
     @Override
@@ -157,40 +126,40 @@ public class ReliableServerSocket extends ServerSocket {
             return;
         }
 
-        _closed = true;
-        synchronized (_backlog) {
-            _backlog.clear();
-            _backlog.notify();
+        closed = true;
+        synchronized (backlog) {
+            backlog.clear();
+            backlog.notify();
         }
 
-        if (_clientSockTable.isEmpty()) {
-            _serverSock.close();
+        if (clientSockTable.isEmpty()) {
+            serverSock.close();
         }
     }
 
     @Override
     public InetAddress getInetAddress() {
-        return _serverSock.getInetAddress();
+        return serverSock.getInetAddress();
     }
 
     @Override
     public int getLocalPort() {
-        return _serverSock.getLocalPort();
+        return serverSock.getLocalPort();
     }
 
     @Override
     public SocketAddress getLocalSocketAddress() {
-        return _serverSock.getLocalSocketAddress();
+        return serverSock.getLocalSocketAddress();
     }
 
     @Override
     public boolean isBound() {
-        return _serverSock.isBound();
+        return serverSock.isBound();
     }
 
     @Override
     public boolean isClosed() {
-        return _closed;
+        return closed;
     }
 
     @Override
@@ -199,12 +168,12 @@ public class ReliableServerSocket extends ServerSocket {
             throw new IllegalArgumentException("timeout < 0");
         }
 
-        _timeout = timeout;
+        this.timeout = timeout;
     }
 
     @Override
     public int getSoTimeout() {
-        return _timeout;
+        return timeout;
     }
 
     /**
@@ -214,16 +183,15 @@ public class ReliableServerSocket extends ServerSocket {
      * @return the registered socket.
      */
     private ReliableClientSocket addClientSocket(SocketAddress endpoint) {
-        synchronized (_clientSockTable) {
-            ReliableClientSocket sock = _clientSockTable.get(endpoint);
+        synchronized (clientSockTable) {
+            ReliableClientSocket sock = clientSockTable.get(endpoint);
 
             if (sock == null) {
                 try {
-                    sock = new ReliableClientSocket(_serverSock, endpoint);
+                    sock = new ReliableClientSocket(serverSock, endpoint);
                     sock.addStateListener(_stateListener);
-                    _clientSockTable.put(endpoint, sock);
-                }
-                catch (IOException xcp) {
+                    clientSockTable.put(endpoint, sock);
+                } catch (IOException xcp) {
                     xcp.printStackTrace();
                 }
             }
@@ -236,79 +204,74 @@ public class ReliableServerSocket extends ServerSocket {
      * Deregisters a client socket with the specified endpoint address.
      *
      * @param endpoint     the socket.
-     * @return the deregistered socket.
      */
-    private ReliableClientSocket removeClientSocket(SocketAddress endpoint) {
-        synchronized (_clientSockTable) {
-            ReliableClientSocket sock = _clientSockTable.remove(endpoint);
+    private void removeClientSocket(SocketAddress endpoint) {
+        synchronized (clientSockTable) {
+            clientSockTable.remove(endpoint);
 
-            if (_clientSockTable.isEmpty()) {
+            if (clientSockTable.isEmpty()) {
                 if (isClosed()) {
-                    _serverSock.close();
+                    serverSock.close();
                 }
             }
 
-            return sock;
         }
     }
 
-    private final DatagramSocket _serverSock;
-    private int            _timeout;
-    private boolean        _closed;
+    private final DatagramSocket serverSock;
+    private int            timeout;
+    private boolean        closed;
 
-    /*
+    /**
      * The listen backlog queue.
      */
-    private final ArrayList<net.udp.ReliableSocket>      _backlog;
+    private final ArrayList<net.udp.ReliableSocket>      backlog;
 
-    /*
+    /**
      * A table of active opened client sockets.
      */
-    private final HashMap<SocketAddress, ReliableClientSocket>   _clientSockTable;
+    private final HashMap<SocketAddress, ReliableClientSocket>   clientSockTable;
 
     private final net.udp.ReliableSocketStateListener _stateListener;
 
     private static final int DEFAULT_BACKLOG_SIZE = 50;
 
     private class ReceiverThread extends Thread {
-        public ReceiverThread()
-        {
+        public ReceiverThread() {
             super("ReliableServerSocket");
             setDaemon(true);
         }
 
         @Override
-        public void run()
-        {
+        public void run() {
             byte[] buffer = new byte[65535];
 
             while (true) {
                 DatagramPacket packet = new DatagramPacket(buffer, buffer.length);
-                ReliableClientSocket sock = null;
+                ReliableClientSocket sock;
 
                 try {
-                    _serverSock.receive(packet);
+                    serverSock.receive(packet);
                     SocketAddress endpoint = packet.getSocketAddress();
                     Segment s = Segment.parse(packet.getData(), 0, packet.getLength());
 
-                    synchronized (_clientSockTable) {
+                    synchronized (clientSockTable) {
 
                         if (!isClosed()) {
                             if (s instanceof SYNSegment) {
-                                if (!_clientSockTable.containsKey(endpoint)) {
+                                if (!clientSockTable.containsKey(endpoint)) {
                                     sock = addClientSocket(endpoint);
                                 }
                             }
                         }
 
-                        sock = _clientSockTable.get(endpoint);
+                        sock = clientSockTable.get(endpoint);
                     }
 
                     if (sock != null) {
                         sock.segmentReceived(s);
                     }
-                }
-                catch (IOException xcp) {
+                } catch (IOException xcp) {
                     if (isClosed()) {
                         break;
                     }
@@ -317,96 +280,79 @@ public class ReliableServerSocket extends ServerSocket {
         }
     }
 
-    public static class ReliableClientSocket extends net.udp.ReliableSocket {
-        public ReliableClientSocket(DatagramSocket sock,
-                                    SocketAddress endpoint)
-            throws IOException
-        {
+    public static class ReliableClientSocket extends ReliableSocket {
+        public ReliableClientSocket(DatagramSocket sock, SocketAddress endpoint) throws IOException {
             super(sock);
             _endpoint = endpoint;
         }
 
         @Override
-        protected void init(DatagramSocket sock, net.udp.ReliableSocketProfile profile)
-        {
-            _queue = new ArrayList<>();
+        protected void init(DatagramSocket sock, net.udp.ReliableSocketProfile profile) {
+            queue = new ArrayList<>();
             super.init(sock, profile);
         }
 
         @Override
-        protected Segment receiveSegmentImpl()
-        {
-            synchronized (_queue) {
-                while (_queue.isEmpty()) {
+        protected Segment receiveSegmentImpl() {
+            synchronized (queue) {
+                while (queue.isEmpty()) {
                     try {
-                        _queue.wait();
-                    }
-                    catch (InterruptedException xcp) {
+                        queue.wait();
+                    } catch (InterruptedException xcp) {
                         xcp.printStackTrace();
                     }
                 }
 
-                return _queue.remove(0);
+                return queue.remove(0);
             }
         }
 
-        protected void segmentReceived(Segment s)
-        {
-            synchronized (_queue) {
-                _queue.add(s);
-                _queue.notify();
-            }
-        }
-
-        @Override
-        protected void closeSocket()
-        {
-            synchronized (_queue) {
-                _queue.clear();
-                _queue.add(null);
-                _queue.notify();
+        protected void segmentReceived(Segment s) {
+            synchronized (queue) {
+                queue.add(s);
+                queue.notify();
             }
         }
 
         @Override
-        protected void log(String msg)
-        {
+        protected void closeSocket() {
+            synchronized (queue) {
+                queue.clear();
+                queue.add(null);
+                queue.notify();
+            }
+        }
+
+        @Override
+        protected void log(String msg) {
             System.out.println(getPort() + ": " + msg);
         }
 
-        private ArrayList<Segment> _queue;
+        private ArrayList<Segment> queue;
     }
 
     private class StateListener implements net.udp.ReliableSocketStateListener {
         @Override
-        public void connectionOpened(net.udp.ReliableSocket sock)
-        {
+        public void connectionOpened(net.udp.ReliableSocket sock) {
             if (sock instanceof ReliableClientSocket) {
-                synchronized (_backlog) {
-                    while (_backlog.size() > DEFAULT_BACKLOG_SIZE) {
+                synchronized (backlog) {
+                    while (backlog.size() > DEFAULT_BACKLOG_SIZE) {
                         try {
-                            _backlog.wait();
+                            backlog.wait();
                         }
                         catch (InterruptedException xcp) {
                             xcp.printStackTrace();
                         }
                     }
 
-                    _backlog.add(sock);
-                    _backlog.notify();
+                    backlog.add(sock);
+                    backlog.notify();
                 }
             }
         }
 
         @Override
-        public void connectionRefused(net.udp.ReliableSocket sock)
-        {
-            // do nothing.
-        }
-
-        @Override
-        public void connectionClosed(net.udp.ReliableSocket sock)
-        {
+        public void connectionClosed(net.udp.ReliableSocket sock) {
             // Remove client socket from the table of active connections.
             if (sock instanceof ReliableClientSocket) {
                 removeClientSocket(sock.getRemoteSocketAddress());
@@ -414,18 +360,11 @@ public class ReliableServerSocket extends ServerSocket {
         }
 
         @Override
-        public void connectionFailure(net.udp.ReliableSocket sock)
-        {
+        public void connectionFailure(net.udp.ReliableSocket sock) {
             // Remove client socket from the table of active connections.
             if (sock instanceof ReliableClientSocket) {
                 removeClientSocket(sock.getRemoteSocketAddress());
             }
-        }
-
-        @Override
-        public void connectionReset(net.udp.ReliableSocket sock)
-        {
-            // do nothing.
         }
     }
 }

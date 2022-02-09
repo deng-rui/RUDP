@@ -2,7 +2,9 @@ package net.udp;
 
 import net.udp.impl.*;
 
-import java.io.*;
+import java.io.EOFException;
+import java.io.IOException;
+import java.io.OutputStream;
 import java.net.*;
 import java.nio.channels.SocketChannel;
 import java.util.ArrayList;
@@ -15,119 +17,10 @@ import java.util.Random;
  * end-to-end communication between two machines.
  *
  * @author Adrian Granados
+ * @author Dr
  * @see    java.net.Socket
  */
 public class ReliableSocket extends Socket {
-    /**
-     * Creates an unconnected RUDP socket with default RUDP parameters.
-     *
-     * @throws IOException if an I/O error occurs when
-     *         creating the underlying UDP socket.
-     */
-    public ReliableSocket() throws IOException {
-        this(new ReliableSocketProfile());
-    }
-
-    /**
-     * Creates an unconnected RUDP socket and uses the given RUDP parameters.
-     *
-     * @throws IOException if an I/O error occurs when
-     *            creating the underlying UDP socket.
-     */
-    public ReliableSocket(ReliableSocketProfile profile) throws IOException {
-        this(new DatagramSocket(), profile);
-    }
-
-    /**
-     * Creates a RUDP socket and connects it to the specified port
-     * number on the named host.
-     * <p>
-     * If the specified host is <tt>null</tt> it is the equivalent of
-     * specifying the address as <tt> (null)</tt>.
-     * In other words, it is equivalent to specifying an address of the
-     * loopback interface.
-     *
-     * @param host the host name, or <code>null</code> for the loopback address.
-     * @param port the port number.
-     *
-     * @throws UnknownHostException if the IP address of the host could not be determined.
-     * @throws IOException if an I/O error occurs when creating the socket.
-     * @throws IllegalArgumentException if the port parameter is outside the specified range
-     *         of valid port values, which is between 0 and 65535, inclusive.
-     * @see java.net.Socket#Socket(String, int)
-     */
-    public ReliableSocket(String host, int port) throws UnknownHostException, IOException {
-        this(new InetSocketAddress(host, port), null);
-    }
-
-    /**
-     * Creates a RUDP socket and connects it to the specified remote address on
-     * the specified remote port. The socket will also bind to the local address
-     * and port supplied.
-     * <p>
-     * If the specified local address is <tt>null</tt> it is the equivalent of
-     * specifying the address as the wildcard address
-     * (see <tt>{@link java.net.InetAddress#isAnyLocalAddress InetAddress.isAnyLocalAddress}()</tt>).
-     * <p>
-     * A local port number of <code>zero</code> will let the system pick up a
-     * free port in the <code>bind</code> operation.
-     *
-     * @param address   the remote address.
-     * @param port      the remote port.
-     * @param localAddr the local address the socket is bound to, or
-     *                  <code>null</code> for the wildcard address.
-     * @param localPort the local port the socket is bound to, or
-     *                  <code>zero</code> for a system selected free port.
-     * @throws IOException if an I/O error occurs when creating the socket.
-     * @throws IllegalArgumentException if the port parameter is outside the specified range
-     *         of valid port values, which is between 0 and 65535, inclusive.
-     */
-    public ReliableSocket(InetAddress address, int port, InetAddress localAddr, int localPort) throws IOException {
-        this(new InetSocketAddress(address, port),
-                new InetSocketAddress(localAddr, localPort));
-    }
-
-    /**
-     * Creates a RUDP socket and connects it to the specified remote host on
-     * the specified remote port. The socket will also bind to the local address
-     * and port supplied.
-     * <p>
-     * If the specified host is <tt>null</tt> it is the equivalent of
-     * specifying the address as <tt> (null)</tt>.
-     * In other words, it is equivalent to specifying an address of the
-     * loopback interface.
-     * <p>
-     * A local port number of <code>zero</code> will let the system pick up a
-     * free port in the <code>bind</code> operation.
-     *
-     * @param host      the name of the remote host, or <code>null</code> for the loopback address.
-     * @param port      the remote port.
-     * @param localAddr the local address the socket is bound to, or
-     *                  <code>null</code> for the wildcard address.
-     * @param localPort the local port the socket is bound to, or
-     *                  <code>zero</code> for a system selected free port.
-     * @throws IOException if an I/O error occurs when creating the socket.
-     * @throws IllegalArgumentException if the port parameter is outside the specified range
-     *         of valid port values, which is between 0 and 65535, inclusive.
-     */
-    public ReliableSocket(String host, int port, InetAddress localAddr, int localPort) throws IOException {
-        this(new InetSocketAddress(host, port),
-                new InetSocketAddress(localAddr, localPort));
-    }
-
-    /**
-     * Creates a RUDP socket and connects it to the specified remote address. The
-     * socket will also bind to the local address supplied.
-     *
-     * @param inetAddr  the remote address.
-     * @param localAddr the local address.
-     * @throws IOException if an I/O error occurs when creating the socket.
-     */
-    protected ReliableSocket(InetSocketAddress inetAddr, InetSocketAddress localAddr) throws IOException {
-        this(new DatagramSocket(localAddr), new ReliableSocketProfile());
-        connect(inetAddr);
-    }
-
     /**
      * Creates a RUDP socket and attaches it to the underlying datagram socket.
      *
@@ -159,112 +52,28 @@ public class ReliableSocket extends Socket {
      * @param profile    the socket profile.
      */
     protected void init(DatagramSocket sock, ReliableSocketProfile profile) {
-        _sock = sock;
+        this.sock = sock;
         _profile = profile;
 
         _sendBufferSize    = (_profile.maxSegmentSize() - Segment.RUDP_HEADER_LEN) * 32;
         _recvBufferSize = (_profile.maxSegmentSize() - Segment.RUDP_HEADER_LEN) * 32;
 
-        _sockThread.start();
+        sockThread.start();
     }
 
     @Override
     public void bind(SocketAddress bindpoint) throws IOException {
-        _sock.bind(bindpoint);
+        // 用不上 API保留
     }
 
     @Override
     public void connect(SocketAddress endpoint) throws IOException {
-        connect(endpoint, 0);
+        // 用不上 API保留
     }
 
     @Override
     public void connect(SocketAddress endpoint, int timeout) throws IOException {
-        if (endpoint == null) {
-            throw new IllegalArgumentException("connect: The address can't be null");
-        }
-
-        if (timeout < 0) {
-            throw new IllegalArgumentException("connect: timeout can't be negative");
-        }
-
-        if (isClosed()) {
-            throw new SocketException("Socket is closed");
-        }
-
-        if (isConnected()) {
-            throw new SocketException("already connected");
-        }
-
-        if (!(endpoint instanceof InetSocketAddress)) {
-            throw new IllegalArgumentException("Unsupported address type");
-        }
-
-        _endpoint = endpoint;
-
-        // Synchronize sequence numbers
-        _state = SYN_SENT;
-        Random rand = new Random(System.currentTimeMillis());
-        Segment syn = new SYNSegment(_counters.setSequenceNumber(rand.nextInt(MAX_SEQUENCE_NUMBER)),
-                _profile.maxOutstandingSegs(),
-                _profile.maxSegmentSize(),
-                _profile.retransmissionTimeout(),
-                _profile.cumulativeAckTimeout(),
-                _profile.nullSegmentTimeout(),
-                _profile.maxRetrans(),
-                _profile.maxCumulativeAcks(),
-                _profile.maxOutOfSequence(),
-                _profile.maxAutoReset());
-
-        sendAndQueueSegment(syn);
-
-        // Wait for connection establishment (or timeout)
-        boolean timedout = false;
-        synchronized (this) {
-            if (!isConnected()) {
-                try {
-                    if (timeout == 0) {
-                        wait();
-                    }
-                    else {
-                        long startTime = System.currentTimeMillis();
-                        wait(timeout);
-                        if (System.currentTimeMillis() - startTime >= timeout) {
-                            timedout = true;
-                        }
-                    }
-                }
-                catch (InterruptedException xcp) {
-                    xcp.printStackTrace();
-                }
-            }
-        }
-
-        if (_state == ESTABLISHED) {
-            return;
-        }
-
-        synchronized (_unackedSentQueue) {
-            _unackedSentQueue.clear();
-            _unackedSentQueue.notifyAll();
-        }
-
-        _counters.reset();
-        _retransmissionTimer.cancel();
-
-        switch (_state) {
-            case SYN_SENT:
-                connectionRefused();
-                _state = CLOSED;
-                if (timedout) {
-                    throw new SocketTimeoutException();
-                }
-                throw new SocketException("Connection refused");
-            case CLOSED:
-            case CLOSE_WAIT:
-                _state = CLOSED;
-                throw new SocketException("Socket closed");
-        }
+        // 用不上 API保留
     }
 
     @Override
@@ -302,21 +111,21 @@ public class ReliableSocket extends Socket {
 
     @Override
     public InetAddress getLocalAddress() {
-        return _sock.getLocalAddress();
+        return sock.getLocalAddress();
     }
 
     @Override
     public int getLocalPort() {
-        return _sock.getLocalPort();
+        return sock.getLocalPort();
     }
 
     @Override
     public SocketAddress getLocalSocketAddress() {
-        return _sock.getLocalSocketAddress();
+        return sock.getLocalSocketAddress();
     }
 
     @Override
-    public InputStream getInputStream() throws IOException {
+    public ReliableSocketInputStream getInputStream() throws IOException {
         if (isClosed()) {
             throw new SocketException("Socket is closed");
         }
@@ -329,7 +138,7 @@ public class ReliableSocket extends Socket {
             throw new SocketException("Socket input is shutdown");
         }
 
-        return _in;
+        return in;
     }
 
     @Override
@@ -346,7 +155,7 @@ public class ReliableSocket extends Socket {
             throw new SocketException("Socket output is shutdown");
         }
 
-        return _out;
+        return out;
     }
 
     @Override
@@ -366,7 +175,7 @@ public class ReliableSocket extends Socket {
                 case CLOSE_WAIT:
                 case SYN_RCVD:
                 case ESTABLISHED:
-                    sendSegment(new FINSegment(_counters.nextSequenceNumber()));
+                    sendSegment(new FINSegment(counters.nextSequenceNumber()));
                     closeImpl();
                     break;
                 case CLOSED:
@@ -374,7 +183,7 @@ public class ReliableSocket extends Socket {
                     _cumulativeAckTimer.destroy();
                     _keepAliveTimer.destroy();
                     _nullSegmentTimer.destroy();
-                    _sock.close();
+                    sock.close();
                     break;
             }
 
@@ -385,15 +194,15 @@ public class ReliableSocket extends Socket {
                 _unackedSentQueue.notify();
             }
 
-            synchronized (_inSeqRecvQueue) {
-                _inSeqRecvQueue.notify();
+            synchronized (inSeqRecvQueue) {
+                inSeqRecvQueue.notify();
             }
         }
     }
 
     @Override
     public boolean isBound() {
-        return _sock.isBound();
+        return sock.isBound();
     }
 
     @Override
@@ -409,12 +218,8 @@ public class ReliableSocket extends Socket {
     }
 
     @Override
-    public void setSoTimeout(int timeout) throws SocketException {
-        if (timeout < 0) {
-            throw new IllegalArgumentException("timeout < 0");
-        }
-
-        _timeout = timeout;
+    public void setSoTimeout(int timeout) {
+        // 用不上 API保留
     }
 
     @Override
@@ -493,10 +298,9 @@ public class ReliableSocket extends Socket {
 
         if (isConnected()) {
             if (_keepAlive) {
-                _keepAliveTimer.schedule(_profile.nullSegmentTimeout() * 6,
-                                         _profile.nullSegmentTimeout() * 6);
-            }
-            else {
+                _keepAliveTimer.schedule(_profile.nullSegmentTimeout() * 6L,
+                                         _profile.nullSegmentTimeout() * 6L);
+            } else {
                 _keepAliveTimer.cancel();
             }
         }
@@ -564,84 +368,6 @@ public class ReliableSocket extends Socket {
     }
 
     /**
-     * Resets the socket state.
-     * <p>
-     * The socket will attempt to deliver all outstanding bytes to the remote
-     * endpoint and then it will renegotiate the connection parameters.
-     * The transmissions of bytes resumes after the renegotation finishes and
-     * the connection is synchronized again.
-     *
-     * @throws IOException if an I/O error occurs when resetting the connection.
-     */
-    public void reset() throws IOException {
-        reset(null);
-    }
-
-    /**
-     * Resets the socket state and profile.
-     * <p>
-     * The socket will attempt to deliver all outstanding bytes to the remote
-     * endpoint and then it will renegotiate the connection parameters
-     * specified in the given socket profile.
-     * The transmissions of bytes resumes after the renegotation finishes and
-     * the connection is synchronized again.
-     *
-     * @param profile the socket profile or null if old profile should be used.
-     *
-     * @throws IOException if an I/O error occurs when resetting the connection.
-     */
-    public void reset(ReliableSocketProfile profile) throws IOException {
-        if (isClosed()) {
-            throw new SocketException("Socket is closed");
-        }
-
-        if (!isConnected()) {
-            throw new SocketException("Socket is not connected");
-        }
-
-        synchronized (_resetLock) {
-            _reset = true;
-
-            sendAndQueueSegment(new RSTSegment(_counters.nextSequenceNumber()));
-
-            // Wait to flush all outstanding segments (including last RST segment).
-            synchronized (_unackedSentQueue) {
-                while (!_unackedSentQueue.isEmpty()) {
-                    try {
-                        _unackedSentQueue.wait();
-                    }
-                    catch (InterruptedException xcp) {
-                        xcp.printStackTrace();
-                    }
-                }
-            }
-        }
-
-        connectionReset();
-
-        // Set new profile
-        if (profile != null) {
-            _profile = profile;
-        }
-
-        // Synchronize sequence numbers
-        _state = SYN_SENT;
-        Random rand = new Random(System.currentTimeMillis());
-        Segment syn = new SYNSegment(_counters.setSequenceNumber(rand.nextInt(MAX_SEQUENCE_NUMBER)),
-                _profile.maxOutstandingSegs(),
-                _profile.maxSegmentSize(),
-                _profile.retransmissionTimeout(),
-                _profile.cumulativeAckTimeout(),
-                _profile.nullSegmentTimeout(),
-                _profile.maxRetrans(),
-                _profile.maxCumulativeAcks(),
-                _profile.maxOutOfSequence(),
-                _profile.maxAutoReset());
-
-        sendAndQueueSegment(syn);
-    }
-
-    /**
      * Writes <code>len</code> bytes from the specified byte array
      * starting at offset <code>off</code> as data segments and
      * queues them for immediate transmission.
@@ -672,17 +398,14 @@ public class ReliableSocket extends Socket {
                 while (_reset) {
                     try {
                         _resetLock.wait();
-                    }
-                    catch (InterruptedException xcp) {
+                    } catch (InterruptedException xcp) {
                         xcp.printStackTrace();
                     }
                 }
 
-                int writeBytes = Math.min(_profile.maxSegmentSize() - Segment.RUDP_HEADER_LEN,
-                                         len - totalBytes);
+                int writeBytes = Math.min(_profile.maxSegmentSize() - Segment.RUDP_HEADER_LEN, len - totalBytes);
 
-                sendAndQueueSegment(new DATSegment(_counters.nextSequenceNumber(),
-                        _counters.getLastInSequence(), b, off + totalBytes, writeBytes));
+                sendAndQueueSegment(new DATSegment(counters.nextSequenceNumber(), counters.getLastInSequence(), b, off + totalBytes, writeBytes));
                 totalBytes += writeBytes;
             }
         }
@@ -715,10 +438,8 @@ public class ReliableSocket extends Socket {
         int totalBytes = 0;
 
         synchronized (_recvQueueLock) {
-
             while (true) {
-                while (_inSeqRecvQueue.isEmpty()) {
-
+                if (inSeqRecvQueue.isEmpty()) {
                     if (isClosed()) {
                         throw new SocketException("Socket is closed");
                     }
@@ -731,26 +452,10 @@ public class ReliableSocket extends Socket {
                         throw new SocketException("Connection reset");
                     }
 
-                    try {
-                        if (_timeout == 0) {
-                            _recvQueueLock.wait();
-                        }
-                        else {
-                            long startTime = System.currentTimeMillis();
-                            _recvQueueLock.wait(_timeout);
-                            if ((System.currentTimeMillis() - startTime) >= _timeout) {
-                                throw new SocketTimeoutException();
-                            }
-                        }
-                    }
-                    catch (InterruptedException xcp) {
-                    	if(!_closed) {
-                            throw new InterruptedIOException(xcp.getMessage());
-                        }
-                    }
+                    return 0;
                 }
 
-                for (Iterator<Segment> it = _inSeqRecvQueue.iterator(); it.hasNext(); ) {
+                for (Iterator<Segment> it = inSeqRecvQueue.iterator(); it.hasNext(); ) {
                     Segment s = it.next();
 
                     if (s instanceof RSTSegment) {
@@ -805,22 +510,6 @@ public class ReliableSocket extends Socket {
     }
 
     /**
-     * Removes the specified state listener from this socket. This is
-     * harmless if the listener was not previously registered.
-     *
-     * @param stateListener the listener to remove.
-     */
-    public void removeStateListener(ReliableSocketStateListener stateListener) {
-         if (stateListener == null) {
-             throw new NullPointerException("stateListener");
-         }
-
-         synchronized (_stateListeners) {
-            _stateListeners.remove(stateListener);
-         }
-    }
-
-    /**
      * Sends a segment piggy-backing any pending acknowledgments.
      *
      * @param  s the segment.
@@ -838,10 +527,6 @@ public class ReliableSocket extends Socket {
             _nullSegmentTimer.reset();
         }
 
-        if (DEBUG) {
-            log("sent " + s);
-        }
-
         sendSegmentImpl(s);
     }
 
@@ -856,15 +541,10 @@ public class ReliableSocket extends Socket {
     private Segment receiveSegment() throws IOException {
         Segment s;
         if ((s = receiveSegmentImpl()) != null) {
-
-            if (DEBUG) {
-                log("recv " + s);
-            }
-
             if (s instanceof DATSegment || s instanceof NULSegment ||
                 s instanceof RSTSegment || s instanceof FINSegment ||
                 s instanceof SYNSegment) {
-                _counters.incCumulativeAckCounter();
+                counters.incCumulativeAckCounter();
             }
 
             if (_keepAlive) {
@@ -885,19 +565,18 @@ public class ReliableSocket extends Socket {
     private void sendAndQueueSegment(Segment segment) throws IOException {
         synchronized (_unackedSentQueue) {
             while ((_unackedSentQueue.size() >= _sendQueueSize) ||
-                   (_counters.getOutstandingSegsCounter() > _profile.maxOutstandingSegs())) {
+                   (counters.getOutstandingSegsCounter() > _profile.maxOutstandingSegs())) {
                 if (!_connected) {
                     throw new SocketException("Socket is closed");
                 }
                 try {
                     _unackedSentQueue.wait();
-                }
-                catch (InterruptedException xcp) {
+                } catch (InterruptedException xcp) {
                     xcp.printStackTrace();
                 }
             }
 
-            _counters.incOutstandingSegsCounter();
+            counters.incOutstandingSegsCounter();
             _unackedSentQueue.add(segment);
         }
 
@@ -906,7 +585,7 @@ public class ReliableSocket extends Socket {
         }
 
         /* Re-start retransmission timer */
-        if (!(segment instanceof EAKSegment) && !(segment instanceof ACKSegment)) {
+        if (!(segment instanceof ACKSegment)) {
             synchronized (_retransmissionTimer) {
                 if (_retransmissionTimer.isIdle()) {
                     _retransmissionTimer.schedule(_profile.retransmissionTimeout(),
@@ -959,12 +638,11 @@ public class ReliableSocket extends Socket {
         else {
             synchronized (this) {
                 try {
-                    _in = new ReliableSocketInputStream(this);
-                    _out = new ReliableSocketOutputStream(this);
+                    in = new ReliableSocketInputStream(this);
+                    out = new ReliableSocketOutputStream(this);
                     _connected = true;
                     _state = ESTABLISHED;
-                }
-                catch (IOException xcp) {
+                } catch (IOException xcp) {
                     xcp.printStackTrace();
                 }
 
@@ -981,23 +659,10 @@ public class ReliableSocket extends Socket {
         _nullSegmentTimer.schedule(0, _profile.nullSegmentTimeout());
 
         if (_keepAlive) {
-            _keepAliveTimer.schedule(_profile.nullSegmentTimeout() * 6,
-                                     _profile.nullSegmentTimeout() * 6);
+            _keepAliveTimer.schedule(_profile.nullSegmentTimeout() * 6L,
+                                     _profile.nullSegmentTimeout() * 6L);
         }
     }
-
-    /**
-     * Notifies all registered state listeners that
-     * the connection attempt has been refused.
-     */
-    private void connectionRefused() {
-        synchronized (_stateListeners) {
-            for (ReliableSocketStateListener l : _stateListeners) {
-                l.connectionRefused(this);
-            }
-        }
-    }
-
     /**
      * Notifies all registered state listeners
      * that the connection has been closed.
@@ -1055,18 +720,6 @@ public class ReliableSocket extends Socket {
     }
 
     /**
-     * Notifies all registered state listeners
-     * that the connection has been reset.
-     */
-    private void connectionReset() {
-        synchronized (_stateListeners) {
-            for (ReliableSocketStateListener l : _stateListeners) {
-                l.connectionReset(this);
-            }
-        }
-    }
-
-    /**
      * Handles a received SYN segment.
      * <p>
      * When a client initiates a connection it sends a SYN segment which
@@ -1084,7 +737,7 @@ public class ReliableSocket extends Socket {
         try {
             switch (_state) {
                 case CLOSED:
-                    _counters.setLastInSequence(segment.seq());
+                    counters.setLastInSequence(segment.seq());
                     _state = SYN_RCVD;
 
                     Random rand = new Random(System.currentTimeMillis());
@@ -1101,7 +754,7 @@ public class ReliableSocket extends Socket {
                             segment.getRetransmissionTimeout(),
                             segment.getCummulativeAckTimeout());
 
-                    Segment syn = new SYNSegment(_counters.setSequenceNumber(rand.nextInt(MAX_SEQUENCE_NUMBER)),
+                    Segment syn = new SYNSegment(counters.setSequenceNumber(rand.nextInt(MAX_SEQUENCE_NUMBER)),
                             _profile.maxOutstandingSegs(),
                             _profile.maxSegmentSize(),
                             _profile.retransmissionTimeout(),
@@ -1116,7 +769,7 @@ public class ReliableSocket extends Socket {
                     sendAndQueueSegment(syn);
                     break;
                 case SYN_SENT:
-                    _counters.setLastInSequence(segment.seq());
+                    counters.setLastInSequence(segment.seq());
                     _state = ESTABLISHED;
                     /*
                      * Here the client accepts or rejects the parameters sent by the
@@ -1126,8 +779,7 @@ public class ReliableSocket extends Socket {
                     connectionOpened();
                     break;
             }
-        }
-        catch (IOException xcp) {
+        } catch (IOException xcp) {
             xcp.printStackTrace();
         }
     }
@@ -1179,8 +831,7 @@ public class ReliableSocket extends Socket {
 
                     try {
                         retransmitSegment(s);
-                    }
-                    catch (IOException xcp) {
+                    } catch (IOException xcp) {
                         xcp.printStackTrace();
                     }
                 }
@@ -1193,9 +844,10 @@ public class ReliableSocket extends Socket {
     /**
      * Handles a received RST, FIN, or DAT segment.
      *
-     * @param segment
+     * @param segment Segment
      */
     private void handleSegment(Segment segment) {
+        boolean isData = false;
         /*
          * When a RST segment is received, the sender must stop
          * sending new packets, but most continue to attempt
@@ -1205,8 +857,6 @@ public class ReliableSocket extends Socket {
             synchronized (_resetLock) {
                 _reset = true;
             }
-
-            connectionReset();
         }
 
         /*
@@ -1230,65 +880,61 @@ public class ReliableSocket extends Socket {
         boolean inSequence = false;
         synchronized (_recvQueueLock) {
 
-            if (compareSequenceNumbers(segment.seq(), _counters.getLastInSequence()) <= 0) {
+            if (compareSequenceNumbers(segment.seq(), counters.getLastInSequence()) <= 0) {
                 /* Drop packet: duplicate. */
-            }
-            else if (compareSequenceNumbers(segment.seq(), nextSequenceNumber(_counters.getLastInSequence())) == 0) {
+            } else if (compareSequenceNumbers(segment.seq(), nextSequenceNumber(counters.getLastInSequence())) == 0) {
                 inSequence = true;
-                if (_inSeqRecvQueue.size() == 0 || (_inSeqRecvQueue.size() + _outSeqRecvQueue.size() < _recvQueueSize)) {
+                if (inSeqRecvQueue.size() == 0 || (inSeqRecvQueue.size() + outSeqRecvQueue.size() < _recvQueueSize)) {
                     /* Insert in-sequence segment */
-                    _counters.setLastInSequence(segment.seq());
+                    counters.setLastInSequence(segment.seq());
                     if (segment instanceof DATSegment || segment instanceof RSTSegment || segment instanceof FINSegment) {
-                        _inSeqRecvQueue.add(segment);
+                        inSeqRecvQueue.add(segment);
                     }
 
                     checkRecvQueues();
+
+                    isData = true;
                 }
-                else {
-                    /* Drop packet: queue is full. */
-                }
-            }
-            else if (_inSeqRecvQueue.size() + _outSeqRecvQueue.size() < _recvQueueSize) {
+            } else if (inSeqRecvQueue.size() + outSeqRecvQueue.size() < _recvQueueSize) {
                 /* Insert out-of-sequence segment, in order */
                 boolean added = false;
-                for (int i = 0; i < _outSeqRecvQueue.size() && !added; i++) {
-                    Segment s = _outSeqRecvQueue.get(i);
+                for (int i = 0; i < outSeqRecvQueue.size() && !added; i++) {
+                    Segment s = outSeqRecvQueue.get(i);
                     int cmp = compareSequenceNumbers(segment.seq(), s.seq());
                     if (cmp == 0) {
                         /* Ignore duplicate packet */
                         added = true;
                     }
                     else if (cmp < 0) {
-                        _outSeqRecvQueue.add(i, segment);
+                        outSeqRecvQueue.add(i, segment);
                         added = true;
                     }
                 }
 
                 if (!added) {
-                    _outSeqRecvQueue.add(segment);
+                    outSeqRecvQueue.add(segment);
                 }
 
-                _counters.incOutOfSequenceCounter();
+                counters.incOutOfSequenceCounter();
             }
 
-            if (inSequence && (segment instanceof RSTSegment ||
-                               segment instanceof NULSegment ||
-                               segment instanceof FINSegment)) {
+            if (inSequence && (segment instanceof RSTSegment || segment instanceof NULSegment || segment instanceof FINSegment)) {
                 sendAck();
-            }
-            else if ((_counters.getOutOfSequenceCounter() > 0) &&
-                (_profile.maxOutOfSequence() == 0 || _counters.getOutOfSequenceCounter() > _profile.maxOutOfSequence())) {
+            } else if ((counters.getOutOfSequenceCounter() > 0) && (_profile.maxOutOfSequence() == 0 || counters.getOutOfSequenceCounter() > _profile.maxOutOfSequence())) {
                 sendExtendedAck();
-            }
-            else if ((_counters.getCumulativeAckCounter() > 0) &&
-                     (_profile.maxCumulativeAcks() == 0 || _counters.getCumulativeAckCounter() > _profile.maxCumulativeAcks())) {
+            } else if ((counters.getCumulativeAckCounter() > 0) && (_profile.maxCumulativeAcks() == 0 || counters.getCumulativeAckCounter() > _profile.maxCumulativeAcks())) {
                 sendSingleAck();
-            }
-            else {
+            } else {
                 synchronized (_cumulativeAckTimer) {
                     if (_cumulativeAckTimer.isIdle()) {
                         _cumulativeAckTimer.schedule(_profile.cumulativeAckTimeout());
                     }
+                }
+            }
+
+            if (isData) {
+                synchronized (Data.waitData) {
+                    Data.waitData.notify();
                 }
             }
         }
@@ -1301,7 +947,7 @@ public class ReliableSocket extends Socket {
      */
     private void sendAck() {
         synchronized (_recvQueueLock) {
-            if (!_outSeqRecvQueue.isEmpty()) {
+            if (!outSeqRecvQueue.isEmpty()) {
                 sendExtendedAck();
                 return;
             }
@@ -1317,26 +963,24 @@ public class ReliableSocket extends Socket {
     private void sendExtendedAck() {
         synchronized (_recvQueueLock) {
 
-            if (_outSeqRecvQueue.isEmpty()) {
+            if (outSeqRecvQueue.isEmpty()) {
                 return;
             }
 
-            _counters.getAndResetCumulativeAckCounter();
-            _counters.getAndResetOutOfSequenceCounter();
+            counters.getAndResetCumulativeAckCounter();
+            counters.getAndResetOutOfSequenceCounter();
 
             /* Compose list of out-of-sequence sequence numbers */
-            int[] acks = new int[_outSeqRecvQueue.size()];
+            int[] acks = new int[outSeqRecvQueue.size()];
             for (int i = 0; i < acks.length; i++) {
-                Segment s = _outSeqRecvQueue.get(i);
+                Segment s = outSeqRecvQueue.get(i);
                 acks[i] = s.seq();
             }
 
             try {
-                int lastInSequence = _counters.getLastInSequence();
-                sendSegment(new EAKSegment(nextSequenceNumber(lastInSequence),
-                        lastInSequence, acks));
-            }
-            catch (IOException xcp) {
+                int lastInSequence = counters.getLastInSequence();
+                sendSegment(new EAKSegment(nextSequenceNumber(lastInSequence), lastInSequence, acks));
+            } catch (IOException xcp) {
                 xcp.printStackTrace();
             }
 
@@ -1348,15 +992,14 @@ public class ReliableSocket extends Socket {
      * be acknowledged.
      */
     private void sendSingleAck() {
-        if (_counters.getAndResetCumulativeAckCounter() == 0) {
+        if (counters.getAndResetCumulativeAckCounter() == 0) {
             return;
         }
 
         try {
-            int lastInSequence = _counters.getLastInSequence();
+            int lastInSequence = counters.getLastInSequence();
             sendSegment(new ACKSegment(nextSequenceNumber(lastInSequence), lastInSequence));
-        }
-        catch (IOException xcp) {
+        } catch (IOException xcp) {
             xcp.printStackTrace();
         }
     }
@@ -1368,11 +1011,11 @@ public class ReliableSocket extends Socket {
      * @param s the segment.
      */
     private void checkAndSetAck(Segment s) {
-        if (_counters.getAndResetCumulativeAckCounter() == 0) {
+        if (counters.getAndResetCumulativeAckCounter() == 0) {
             return;
         }
 
-        s.setAck(_counters.getLastInSequence());
+        s.setAck(counters.getLastInSequence());
     }
 
     /**
@@ -1387,7 +1030,7 @@ public class ReliableSocket extends Socket {
             return;
         }
 
-        _counters.getAndResetOutstandingSegsCounter();
+        counters.getAndResetOutstandingSegsCounter();
 
         if (_state == SYN_RCVD) {
             _state = ESTABLISHED;
@@ -1411,13 +1054,13 @@ public class ReliableSocket extends Socket {
      */
     private void checkRecvQueues() {
         synchronized (_recvQueueLock) {
-            Iterator<Segment> it = _outSeqRecvQueue.iterator();
+            Iterator<Segment> it = outSeqRecvQueue.iterator();
             while (it.hasNext()) {
                 Segment s = it.next();
-                if (compareSequenceNumbers(s.seq(), nextSequenceNumber(_counters.getLastInSequence())) == 0) {
-                    _counters.setLastInSequence(s.seq());
+                if (compareSequenceNumbers(s.seq(), nextSequenceNumber(counters.getLastInSequence())) == 0) {
+                    counters.setLastInSequence(s.seq());
                     if (s instanceof DATSegment || s instanceof RSTSegment || s instanceof FINSegment) {
-                        _inSeqRecvQueue.add(s);
+                        inSeqRecvQueue.add(s);
                     }
                     it.remove();
                 }
@@ -1436,11 +1079,9 @@ public class ReliableSocket extends Socket {
      */
     protected void sendSegmentImpl(Segment s) throws IOException {
         try {
-            DatagramPacket packet = new DatagramPacket(
-                    s.getBytes(), s.length(), _endpoint);
-            _sock.send(packet);
-        }
-        catch (IOException xcp) {
+            DatagramPacket packet = new DatagramPacket(s.getBytes(), s.length(), _endpoint);
+            sock.send(packet);
+        } catch (IOException xcp) {
             if (!isClosed()) {
                 xcp.printStackTrace();
             }
@@ -1457,10 +1098,9 @@ public class ReliableSocket extends Socket {
     protected Segment receiveSegmentImpl() throws IOException {
         try {
             DatagramPacket packet = new DatagramPacket(_recvbuffer, _recvbuffer.length);
-            _sock.receive(packet);
+            sock.receive(packet);
             return Segment.parse(packet.getData(), 0, packet.getLength());
-        }
-        catch (IOException ioXcp) {
+        } catch (IOException ioXcp) {
             if (!isClosed()) {
                 ioXcp.printStackTrace();
             }
@@ -1473,7 +1113,7 @@ public class ReliableSocket extends Socket {
      * Closes the underlying UDP socket.
      */
     protected void closeSocket() {
-        _sock.close();
+        sock.close();
     }
 
     /**
@@ -1484,14 +1124,13 @@ public class ReliableSocket extends Socket {
         _keepAliveTimer.cancel();
         _state = CLOSE_WAIT;
 
-        Thread t = new Thread(() -> {
+        Data.thread.execute(() -> {
             _keepAliveTimer.destroy();
             _nullSegmentTimer.destroy();
 
             try {
                 Thread.sleep(_profile.nullSegmentTimeout() * 2L);
-            }
-            catch (InterruptedException xcp) {
+            } catch (InterruptedException xcp) {
                 xcp.printStackTrace();
             }
 
@@ -1501,9 +1140,6 @@ public class ReliableSocket extends Socket {
             closeSocket();
             connectionClosed();
         });
-        t.setName("ReliableSocket-Closing");
-        t.setDaemon(true);
-        t.start();
     }
 
     /**
@@ -1532,9 +1168,8 @@ public class ReliableSocket extends Socket {
     private int compareSequenceNumbers(int seqn, int aseqn) {
         if (seqn == aseqn) {
             return 0;
-        }
-        else if (((seqn < aseqn) && ((aseqn - seqn) > MAX_SEQUENCE_NUMBER/2)) ||
-                 ((seqn > aseqn) && ((seqn - aseqn) < MAX_SEQUENCE_NUMBER/2))) {
+        } else if (((seqn < aseqn) && ((aseqn - seqn) > MAX_SEQUENCE_NUMBER >> 1)) ||
+                 ((seqn > aseqn) && ((seqn - aseqn) < MAX_SEQUENCE_NUMBER >> 1))) {
             return 1;
         }
         else {
@@ -1542,10 +1177,10 @@ public class ReliableSocket extends Socket {
         }
     }
 
-    protected DatagramSocket       _sock;
+    protected DatagramSocket       sock;
     protected SocketAddress        _endpoint;
-    protected ReliableSocketInputStream  _in;
-    protected ReliableSocketOutputStream _out;
+    protected ReliableSocketInputStream  in;
+    protected ReliableSocketOutputStream out;
 
     private final byte[]  _recvbuffer = new byte[65535];
 
@@ -1554,7 +1189,6 @@ public class ReliableSocket extends Socket {
     private boolean _reset     = false;
     private boolean _keepAlive = true;
     private int     _state     = CLOSED;
-    private int     _timeout   = 0; /* (ms) */
     private boolean _shutIn  = false;
     private boolean _shutOut = false;
 
@@ -1567,13 +1201,13 @@ public class ReliableSocket extends Socket {
     private ReliableSocketProfile _profile = new ReliableSocketProfile();
 
     private final ArrayList<Segment> _unackedSentQueue = new ArrayList<>(); /* Unacknowledged segments send queue */
-    private final ArrayList<Segment> _outSeqRecvQueue  = new ArrayList<>(); /* Out-of-sequence received segments queue */
-    private final ArrayList<Segment> _inSeqRecvQueue   = new ArrayList<>(); /* In-sequence received segments queue */
+    private final ArrayList<Segment> outSeqRecvQueue  = new ArrayList<>(); /* Out-of-sequence received segments queue */
+    private final ArrayList<Segment> inSeqRecvQueue   = new ArrayList<>(); /* In-sequence received segments queue */
 
     private final Object _recvQueueLock = new Object();  /* Lock for receiver queues */
-    private final Counters _counters    = new Counters(); /* Sequence number, ack counters, etc. */
+    private final Counters counters    = new Counters(); /* Sequence number, ack counters, etc. */
 
-    private final Thread _sockThread    = new ReliableSocketThread();
+    private final Thread sockThread    = new ReliableSocketThread();
 
     private final int _sendQueueSize = 32; /* Maximum number of received segments */
     private final int _recvQueueSize = 32; /* Maximum number of sent segments */
@@ -1629,8 +1263,6 @@ public class ReliableSocket extends Socket {
     private static final int ESTABLISHED = 3; /* Data transfer state */
     private static final int CLOSE_WAIT  = 4; /* Request to close the connection */
 
-    private static final boolean DEBUG = Boolean.getBoolean("net.udp.debug");
-
     /*
      * -----------------------------------------------------------------------
      * INTERNAL CLASSES
@@ -1638,87 +1270,67 @@ public class ReliableSocket extends Socket {
      */
 
     private static class Counters {
-        public Counters()
-        {
+        public Counters() {
         }
 
-        public synchronized int nextSequenceNumber()
-        {
+        public synchronized int nextSequenceNumber() {
             return (_seqn = ReliableSocket.nextSequenceNumber(_seqn));
         }
 
-        public synchronized int setSequenceNumber(int n)
-        {
+        public synchronized int setSequenceNumber(int n) {
             _seqn = n;
             return _seqn;
         }
 
-        public synchronized int setLastInSequence(int n)
-        {
+        public synchronized void setLastInSequence(int n) {
             _lastInSequence = n;
+        }
+
+        public synchronized int getLastInSequence() {
             return _lastInSequence;
         }
 
-        public synchronized int getLastInSequence()
-        {
-            return _lastInSequence;
-        }
-
-        public synchronized void incCumulativeAckCounter()
-        {
+        public synchronized void incCumulativeAckCounter() {
             _cumAckCounter++;
         }
 
-        public synchronized int getCumulativeAckCounter()
-        {
+        public synchronized int getCumulativeAckCounter() {
             return _cumAckCounter;
         }
 
-        public synchronized int getAndResetCumulativeAckCounter()
-        {
+        public synchronized int getAndResetCumulativeAckCounter() {
             int tmp = _cumAckCounter;
             _cumAckCounter = 0;
             return tmp;
         }
 
-        public synchronized void incOutOfSequenceCounter()
-        {
-            _outOfSeqCounter++;
+        public synchronized void incOutOfSequenceCounter() {
+            outOfSeqCounter++;
         }
 
-        public synchronized int getOutOfSequenceCounter()
-        {
-            return _outOfSeqCounter;
+        public synchronized int getOutOfSequenceCounter() {
+            return outOfSeqCounter;
         }
 
-        public synchronized int getAndResetOutOfSequenceCounter()
-        {
-            int tmp = _outOfSeqCounter;
-            _outOfSeqCounter = 0;
-            return tmp;
+        public synchronized void getAndResetOutOfSequenceCounter() {
+            outOfSeqCounter = 0;
         }
 
-        public synchronized void incOutstandingSegsCounter()
-        {
-            _outSegsCounter++;
+        public synchronized void incOutstandingSegsCounter() {
+            outSegsCounter++;
         }
 
-        public synchronized int getOutstandingSegsCounter()
-        {
-            return _outSegsCounter;
+        public synchronized int getOutstandingSegsCounter() {
+            return outSegsCounter;
         }
 
-        public synchronized int getAndResetOutstandingSegsCounter()
-        {
-            int tmp = _outSegsCounter;
-            _outSegsCounter = 0;
-            return tmp;
+        public synchronized void getAndResetOutstandingSegsCounter() {
+            outSegsCounter = 0;
         }
 
-        public synchronized void reset()
-        {
-            _outOfSeqCounter = 0;
-            _outSegsCounter  = 0;
+        public synchronized void reset() {
+            outOfSeqCounter = 0;
+            outSegsCounter  = 0;
             _cumAckCounter   = 0;
         }
 
@@ -1744,26 +1356,24 @@ public class ReliableSocket extends Socket {
          * is sent to the transmitter. The counter is then reset to zero. The
          * recommended value for the out-of-sequence acknowledgments counter is 3.
          */
-        private int _outOfSeqCounter; /* Out-of-sequence acknowledgments counter */
+        private int outOfSeqCounter; /* Out-of-sequence acknowledgments counter */
 
         /*
          * The transmitter maintains a counter of the number of segments that
          * have been sent without getting an acknowledgment. This is used
          * by the receiver as a mean of flow control.
          */
-        private int _outSegsCounter; /* Outstanding segments counter */
+        private int outSegsCounter; /* Outstanding segments counter */
     }
 
     private class ReliableSocketThread extends Thread {
-        public ReliableSocketThread()
-        {
+        public ReliableSocketThread() {
             super("ReliableSocket");
             setDaemon(true);
         }
 
         @Override
-        public void run()
-        {
+        public void run() {
             Segment segment;
             try {
                 while ((segment = receiveSegment()) != null) {
@@ -1783,8 +1393,7 @@ public class ReliableSocket extends Socket {
 
                     checkAndGetAck(segment);
                 }
-            }
-            catch (IOException xcp) {
+            } catch (IOException xcp) {
                 xcp.printStackTrace();
             }
         }
@@ -1792,18 +1401,13 @@ public class ReliableSocket extends Socket {
 
     private class NullSegmentTimerTask implements Runnable {
         @Override
-        public void run()
-        {
+        public void run() {
             // Send a new NULL segment if there is nothing to be retransmitted.
             synchronized (_unackedSentQueue) {
                 if (_unackedSentQueue.isEmpty()) {
                     try {
-                        sendAndQueueSegment(new NULSegment(_counters.nextSequenceNumber()));
-                    }
-                    catch (IOException xcp) {
-                        if (DEBUG) {
-                            xcp.printStackTrace();
-                        }
+                        sendAndQueueSegment(new NULSegment(counters.nextSequenceNumber()));
+                    } catch (IOException ignored) {
                     }
                 }
             }
@@ -1812,8 +1416,7 @@ public class ReliableSocket extends Socket {
 
     private class RetransmissionTimerTask implements Runnable {
         @Override
-        public void run()
-        {
+        public void run() {
             synchronized (_unackedSentQueue) {
                 for (Segment s : _unackedSentQueue) {
                     try {
@@ -1828,16 +1431,14 @@ public class ReliableSocket extends Socket {
 
     private class CumulativeAckTimerTask implements Runnable {
         @Override
-        public void run()
-        {
+        public void run() {
             sendAck();
         }
     }
 
     private class KeepAliveTimerTask implements Runnable {
         @Override
-        public void run()
-        {
+        public void run() {
             connectionFailure();
         }
     }

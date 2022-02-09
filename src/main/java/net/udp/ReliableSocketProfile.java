@@ -36,7 +36,8 @@ public class ReliableSocketProfile {
              MAX_RECV_QUEUE_SIZE,
              MAX_SEGMENT_SIZE,
              MAX_OUTSTANDING_SEGS,
-             0/*MAX_RETRANS*/,
+             /* MAX_RETRANS */
+             0,
              MAX_CUMULATIVE_ACKS,
              MAX_OUT_OF_SEQUENCE,
              MAX_AUTO_RESET,
@@ -83,111 +84,111 @@ public class ReliableSocketProfile {
         checkValue("retransmissionTimeout", retransmissionTimeout, 100, 65535);
         checkValue("cumulativeAckTimeout",  cumulativeAckTimeout,  100, 65535);
 
-        _maxSendQueueSize      = maxSendQueueSize;
-        _maxRecvQueueSize      = maxRecvQueueSize;
-        _maxSegmentSize        = maxSegmentSize;
-        _maxOutstandingSegs    = maxOutstandingSegs;
-        _maxRetrans            = maxRetrans;
-        _maxCumulativeAcks     = maxCumulativeAcks;
-        _maxOutOfSequence      = maxOutOfSequence;
-        _maxAutoReset          = maxAutoReset;
-        _nullSegmentTimeout    = nullSegmentTimeout;
-        _retransmissionTimeout = retransmissionTimeout;
-        _cumulativeAckTimeout  = cumulativeAckTimeout;
+        this.maxSendQueueSize = maxSendQueueSize;
+        this.maxRecvQueueSize = maxRecvQueueSize;
+        this.maxSegmentSize = maxSegmentSize;
+        this.maxOutstandingSegs = maxOutstandingSegs;
+        this.maxRetrans = maxRetrans;
+        this.maxCumulativeAcks = maxCumulativeAcks;
+        this.maxOutOfSequence = maxOutOfSequence;
+        this.maxAutoReset = maxAutoReset;
+        this.nullSegmentTimeout = nullSegmentTimeout;
+        this.retransmissionTimeout = retransmissionTimeout;
+        this.cumulativeAckTimeout = cumulativeAckTimeout;
     }
 
     /**
      * Returns the maximum send queue size (packets).
      */
     public int maxSendQueueSize() {
-        return _maxSendQueueSize;
+        return maxSendQueueSize;
     }
 
     /**
      * Returns the maximum receive queue size (packets).
      */
     public int maxRecvQueueSize() {
-        return _maxRecvQueueSize;
+        return maxRecvQueueSize;
     }
 
     /**
      * Returns the maximum segment size (octets).
      */
     public int maxSegmentSize() {
-        return _maxSegmentSize;
+        return maxSegmentSize;
     }
 
     /**
      * Returns the maximum number of outstanding segments.
      */
     public int maxOutstandingSegs() {
-        return _maxOutstandingSegs;
+        return maxOutstandingSegs;
     }
 
     /**
      * Returns the maximum number of consecutive retransmissions (0 means unlimited).
      */
     public int maxRetrans() {
-        return _maxRetrans;
+        return maxRetrans;
     }
 
     /**
      * Returns the maximum number of unacknowledged received segments.
      */
     public int maxCumulativeAcks() {
-        return _maxCumulativeAcks;
+        return maxCumulativeAcks;
     }
 
     /**
      * Returns the maximum number of out-of-sequence received segments.
      */
     public int maxOutOfSequence() {
-        return _maxOutOfSequence;
+        return maxOutOfSequence;
     }
 
     /**
      * Returns the maximum number of consecutive auto resets.
      */
     public int maxAutoReset() {
-        return _maxAutoReset;
+        return maxAutoReset;
     }
 
     /**
      * Returns the null segment timeout (ms).
      */
     public int nullSegmentTimeout() {
-        return _nullSegmentTimeout;
+        return nullSegmentTimeout;
     }
 
     /**
      * Returns the retransmission timeout (ms).
      */
     public int retransmissionTimeout() {
-        return _retransmissionTimeout;
+        return retransmissionTimeout;
     }
 
     /**
      * Returns the cumulative acknowledge timeout (ms).
      */
     public int cumulativeAckTimeout() {
-        return _cumulativeAckTimeout;
+        return cumulativeAckTimeout;
     }
 
     @Override
     public String toString() {
         StringBuilder sb = new StringBuilder();
         sb.append("[");
-        sb.append(_maxSendQueueSize).append(", ");
-        sb.append(_maxRecvQueueSize).append(", ");
-        sb.append(_maxSegmentSize).append(", ");
-        sb.append(_maxOutstandingSegs).append(", ");
-        sb.append(_maxRetrans).append(", ");
-        sb.append(_maxCumulativeAcks).append(", ");
-        sb.append(_maxOutOfSequence).append(", ");
-        sb.append(_maxAutoReset).append(", ");
-        sb.append(_nullSegmentTimeout).append(", ");
-        sb.append(_retransmissionTimeout).append(", ");
-        sb.append(_cumulativeAckTimeout);
+        sb.append(maxSendQueueSize).append(", ");
+        sb.append(maxRecvQueueSize).append(", ");
+        sb.append(maxSegmentSize).append(", ");
+        sb.append(maxOutstandingSegs).append(", ");
+        sb.append(maxRetrans).append(", ");
+        sb.append(maxCumulativeAcks).append(", ");
+        sb.append(maxOutOfSequence).append(", ");
+        sb.append(maxAutoReset).append(", ");
+        sb.append(nullSegmentTimeout).append(", ");
+        sb.append(retransmissionTimeout).append(", ");
+        sb.append(cumulativeAckTimeout);
         sb.append("]");
         return sb.toString();
     }
@@ -201,15 +202,15 @@ public class ReliableSocketProfile {
         }
     }
 
-    private final int _maxSendQueueSize;
-    private final int _maxRecvQueueSize;
-    private final int _maxSegmentSize;
-    private final int _maxOutstandingSegs;
-    private final int _maxRetrans;
-    private final int _maxCumulativeAcks;
-    private final int _maxOutOfSequence;
-    private final int _maxAutoReset;
-    private final int _nullSegmentTimeout;
-    private final int _retransmissionTimeout;
-    private final int _cumulativeAckTimeout;
+    private final int maxSendQueueSize;
+    private final int maxRecvQueueSize;
+    private final int maxSegmentSize;
+    private final int maxOutstandingSegs;
+    private final int maxRetrans;
+    private final int maxCumulativeAcks;
+    private final int maxOutOfSequence;
+    private final int maxAutoReset;
+    private final int nullSegmentTimeout;
+    private final int retransmissionTimeout;
+    private final int cumulativeAckTimeout;
 }

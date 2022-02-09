@@ -12,54 +12,63 @@ public abstract class Segment {
     public static final byte CHK_FLAG = (byte) 0x04;
     public static final byte FIN_FLAG = (byte) 0x02;
 
-
+    /** Control flags field */
+    private int flags;
+    /** Header length field */
+    private int hlen;
+    /** Sequence number field */
+    private int seqn;
+    /** Acknowledgment number field */
+    private int ackn;
+    /** Retransmission counter */
+    private int nretx; 
     protected Segment() {
-        _nretx = 0;
-        _ackn = -1;
+        this.nretx = 0;
+        this.ackn = -1;
     }
 
     public abstract String type();
 
     public int flags() {
-        return _flags;
+        return flags;
     }
 
     public int seq() {
-        return _seqn;
+        return seqn;
     }
 
     public int length() {
-        return _hlen;
+        return hlen;
     }
 
     public void setAck(int ackn) {
-        _flags = _flags | ACK_FLAG;
-        _ackn = ackn;
+        this.flags = flags | ACK_FLAG;
+        this.ackn = ackn;
     }
 
     public int getAck() {
-        if ((_flags & ACK_FLAG) == ACK_FLAG) {
-            return _ackn;
+        if ((flags & ACK_FLAG) == ACK_FLAG) {
+            return ackn;
         }
 
         return -1;
     }
 
     public int getRetxCounter() {
-        return _nretx;
+        return nretx;
     }
 
     public void setRetxCounter(int n) {
-        _nretx = n;
+        this.nretx = n;
     }
 
     public byte[] getBytes() {
         byte[] buffer = new byte[length()];
 
-        buffer[0] = (byte) (_flags & 0xFF);
-        buffer[1] = (byte) (_hlen & 0xFF);
-        buffer[2] = (byte) (_seqn & 0xFF);
-        buffer[3] = (byte) (_ackn & 0xFF);
+        buffer[0] = (byte) (flags & 0xFF);
+        buffer[1] = (byte) (hlen & 0xFF);
+        buffer[2] = (byte) (seqn & 0xFF);
+        buffer[3] = (byte) (ackn & 0xFF);
 
         return buffer;
     }
@@ -88,20 +97,15 @@ public abstract class Segment {
         int flags = bytes[off];
         if ((flags & SYN_FLAG) != 0) {
             segment = new SYNSegment();
-        }
-        else if ((flags & NUL_FLAG) != 0) {
+        } else if ((flags & NUL_FLAG) != 0) {
             segment = new NULSegment();
-        }
-        else if ((flags & EAK_FLAG) != 0) {
+        } else if ((flags & EAK_FLAG) != 0) {
             segment = new EAKSegment();
-        }
-        else if ((flags & RST_FLAG) != 0) {
+        } else if ((flags & RST_FLAG) != 0) {
             segment = new RSTSegment();
-        }
-        else if ((flags & FIN_FLAG) != 0) {
+        } else if ((flags & FIN_FLAG) != 0) {
             segment = new FINSegment();
-        }
-        else if ((flags & ACK_FLAG) != 0) { /* always process ACKs or Data segments last */
+        } else if ((flags & ACK_FLAG) != 0) { /* always process ACKs or Data segments last */
             if (len == RUDP_HEADER_LEN) {
                 segment = new ACKSegment();
             }
@@ -134,22 +138,15 @@ public abstract class Segment {
      *
      */
     protected void init(int flags, int seqn, int len) {
-        _flags = flags;
-        _seqn = seqn;
-        _hlen = len;
+        this.flags = flags;
+        this.seqn = seqn;
+        this.hlen = len;
     }
 
     protected void parseBytes(byte[] buffer, int off, int len) {
-        _flags = (buffer[off] & 0xFF);
-        _hlen  = (buffer[off+1] & 0xFF);
-        _seqn  = (buffer[off+2] & 0xFF);
-        _ackn  = (buffer[off+3] & 0xFF);
+        this.flags = (buffer[off] & 0xFF);
+        this.hlen  = (buffer[off+1] & 0xFF);
+        this.seqn  = (buffer[off+2] & 0xFF);
+        this.ackn  = (buffer[off+3] & 0xFF);
     }
-
-    private int _flags; /* Control flags field */
-    private int _hlen;   /* Header length field */
-    private int _seqn;  /* Sequence number field */
-    private int _ackn;  /* Acknowledgment number field */
-
-    private int _nretx; /* Retransmission counter */
 }

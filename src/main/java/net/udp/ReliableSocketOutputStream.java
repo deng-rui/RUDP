@@ -11,6 +11,10 @@ import java.io.OutputStream;
  *
  */
 class ReliableSocketOutputStream extends OutputStream {
+    protected ReliableSocket sock;
+    protected byte[]         buf;
+    protected int            count;
+
     /**
      * Creates a new ReliableSocketOutputStream.
      * This method can only be called by a ReliableSocket.
@@ -23,18 +27,18 @@ class ReliableSocketOutputStream extends OutputStream {
             throw new NullPointerException("sock");
         }
 
-        _sock = sock;
-        _buf = new byte[_sock.getSendBufferSize()];
-        _count = 0;
+        this.sock = sock;
+        buf = new byte[sock.getSendBufferSize()];
+        count = 0;
     }
 
     @Override
     public synchronized void write(int b) throws IOException {
-        if (_count >= _buf.length) {
+        if (count >= buf.length) {
             flush();
         }
 
-        _buf[_count++] = (byte) (b & 0xFF);
+        buf[count++] = (byte) (b & 0xFF);
     }
 
     @Override
@@ -56,31 +60,26 @@ class ReliableSocketOutputStream extends OutputStream {
         int writtenBytes = 0;
 
         while (writtenBytes < len) {
-            buflen = Math.min(_buf.length, len-writtenBytes);
-            if (buflen > (_buf.length - _count)) {
+            buflen = Math.min(buf.length, len-writtenBytes);
+            if (buflen > (buf.length - count)) {
                 flush();
             }
-            System.arraycopy(b, off+writtenBytes, _buf, _count, buflen);
-            _count += buflen;
+            System.arraycopy(b, off+writtenBytes, buf, count, buflen);
+            count += buflen;
             writtenBytes += buflen;
         }
     }
 
     @Override
     public synchronized void flush() throws IOException {
-        if (_count > 0) {
-            _sock.write(_buf, 0, _count);
-            _count = 0;
+        if (count > 0) {
+            sock.write(buf, 0, count);
+            count = 0;
         }
     }
 
     @Override
     public synchronized void close() throws IOException {
-        flush();
-        _sock.shutdownOutput();
+        sock.shutdownOutput();
     }
-
-    protected ReliableSocket _sock;
-    protected byte[]         _buf;
-    protected int            _count;
 }

@@ -1,3 +1,12 @@
+/*
+ * Copyright 2020-2022 RW-HPS Team and contributors.
+ *
+ * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
+ * Use of this source code is governed by the GNU AGPLv3 license that can be found through the following link.
+ *
+ * https://github.com/RW-HPS/RW-HPS/blob/master/LICENSE
+ */
+
 package net.udp.impl;
 
 public class Timer extends Thread {
@@ -14,18 +23,14 @@ public class Timer extends Thread {
     @Override
     public void run() {
         while (!_stopped) {
-
             synchronized (this) {
-
                 while (!_scheduled && !_stopped) {
                     try {
                         wait();
-                    }
-                    catch (InterruptedException xcp) {
+                    } catch (InterruptedException xcp) {
                         xcp.printStackTrace();
                     }
                 }
-
                 if (_stopped) {
                     break;
                 }
@@ -39,8 +44,7 @@ public class Timer extends Thread {
                 if (_delay > 0) {
                     try {
                         _lock.wait(_delay);
-                    }
-                    catch (InterruptedException xcp) {
+                    } catch (InterruptedException xcp) {
                         xcp.printStackTrace();
                     }
                 }
@@ -129,6 +133,7 @@ public class Timer extends Thread {
         }
     }
 
+    @Override
     public synchronized void destroy() {
         cancel();
         _stopped = true;

@@ -8,26 +8,30 @@ import java.io.InputStream;
  * Note that this class should <b>NOT</b> be public.
  *
  * @author Adrian Granados
+ * @author Dr
  *
  */
-class ReliableSocketInputStream extends InputStream {
+public class ReliableSocketInputStream extends InputStream {
+	protected ReliableSocket sock;
+	protected byte[] buf;
+	protected int pos;
+	protected int count;
+
 	/**
 	 * Creates a new ReliableSocketInputStream.
 	 * This method can only be called by a ReliableSocket.
 	 *
-	 * @param sock
-	 *            the actual RUDP socket to read bytes on.
-	 * @throws IOException
-	 *             if an I/O error occurs.
+	 * @param sock the actual RUDP socket to read bytes on.
+	 * @throws IOException if an I/O error occurs.
 	 */
 	public ReliableSocketInputStream(ReliableSocket sock) throws IOException {
 		if (sock == null) {
 			throw new NullPointerException("sock");
 		}
 
-		_sock = sock;
-		_buf = new byte[_sock.getReceiveBufferSize()];
-		_pos = _count = 0;
+		this.sock = sock;
+		buf = new byte[sock.getReceiveBufferSize()];
+		pos = count = 0;
 	}
 
 	@Override
@@ -36,7 +40,7 @@ class ReliableSocketInputStream extends InputStream {
 			return -1;
 		}
 
-		return (_buf[_pos++] & 0xFF);
+		return (buf[pos++] & 0xFF);
 	}
 
 	@Override
@@ -46,10 +50,6 @@ class ReliableSocketInputStream extends InputStream {
 
 	@Override
 	public synchronized int read(byte[] b, int off, int len) throws IOException {
-		if (b == null) {
-			throw new NullPointerException();
-		}
-
 		if (off < 0 || len < 0 || (off + len) > b.length) {
 			throw new IndexOutOfBoundsException();
 		}
@@ -59,15 +59,15 @@ class ReliableSocketInputStream extends InputStream {
 		}
 
 		int readBytes = Math.min(available(), len);
-		System.arraycopy(_buf, _pos, b, off, readBytes);
-		_pos += readBytes;
+		System.arraycopy(buf, pos, b, off, readBytes);
+		pos += readBytes;
 
 		return readBytes;
 	}
 
 	@Override
 	public synchronized int available() {
-		return (_count - _pos);
+		return (count - pos);
 	}
 
 	@Override
@@ -77,20 +77,23 @@ class ReliableSocketInputStream extends InputStream {
 
 	@Override
 	public void close() throws IOException {
-		_sock.shutdownInput();
+		sock.shutdownInput();
+	}
+
+	public int getReadsDataLength() throws IOException {
+		return sock.read(buf, 0, buf.length);
+	}
+
+	public byte[] getReadsData() throws IOException {
+		return buf;
 	}
 
 	private int readImpl() throws IOException {
 		if (available() == 0) {
-			_count = _sock.read(_buf, 0, _buf.length);
-			_pos = 0;
+			count = sock.read(buf, 0, buf.length);
+			pos = 0;
 		}
 
-		return _count;
+		return count;
 	}
-
-	protected ReliableSocket _sock;
-	protected byte[] _buf;
-	protected int _pos;
-	protected int _count;
 }
